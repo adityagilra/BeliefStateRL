@@ -1,0 +1,1 @@
+from gym_tasks.envs.VisualOlfactoryAttentionSwitchEnv import VisualOlfactoryAttentionSwitchEnv
