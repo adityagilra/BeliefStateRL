@@ -1,6 +1,29 @@
 '''
 A belief state RL task from the lab of Adil Ghani Khan.
 
+Version 0:
+
+Block Visual:
+3 time steps in a trial:
+ step 1: blank cue
+ step 2: lick is punished, one of 2 visual stimuli is shown
+ step 3: lick leads to reward if visual cue 1, punishment if visual cue 2
+
+Block Olfactory:
+3 or 4 time steps in a trial:
+ step 1: blank cue
+ 30%
+ step 2: lick is punished, one of 2 odor stimuli is given
+ step 3: lick leads to reward if odor 1, punishment if odor 2
+ 70%
+ step 2: lick is punished, one of 2 visual stimuli is shown
+ step 3: lick is punished, one of 2 odor stimuli is given
+ step 4: lick leads to reward if odor 1, punishment if odor 2
+
+We transition to the other block after 20 consecutively correct trials.
+A lick for cue 1 or a no lick for cue 2 in the final reward step counts as correct response.
+No lick in all other time steps in these trials is also required.
+
 Aditya Gilra, 31 Aug 2021.
 '''
 
@@ -95,8 +118,9 @@ class VisualOlfactoryAttentionSwitchEnv(Env):
         self.observation_number = 5
 
     def _needless_lick(self, action):
-        # licking to blank stimulus (or visual stimulus in olfactory block) is wasteful
-        if action != self.target_action_number:
+        # licking to end or blank stimulus,
+        #  or visual stimulus in olfactory block, is wasteful
+        if action == 1:
             self.reward = -self.lick_without_reward_factor*self.reward_size
             self.consecutive_correct_number = 0
 
@@ -123,6 +147,8 @@ class VisualOlfactoryAttentionSwitchEnv(Env):
         # visual block
         if self.block_number == 0:
             if self.time_index == 0:
+                # licking to end stimulus is wasteful
+                self._needless_lick(action)
                 # blank stimulus is shown now
                 self.observation_number = 0
                 
@@ -144,6 +170,8 @@ class VisualOlfactoryAttentionSwitchEnv(Env):
         # olfactory block
         elif self.block_number == 1:
             if self.time_index == 0:
+                # licking to end stimulus is wasteful
+                self._needless_lick(action)
                 # blank stimulus is shown now
                 self.observation_number = 0
                 

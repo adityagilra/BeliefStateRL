@@ -7,8 +7,9 @@ import matplotlib.pyplot as plt
 # if history, then store current and previous observations as state
 # else just store current observation as state
 # uncomment one of these
-history = True
-#history = False
+history = 0 # observation is state
+#history = 1 # use previous and current observation as state
+#history = 5 # n recent observations as state
 
 # policy can be one of these
 # uncomment one
@@ -22,20 +23,22 @@ env = gym.make('visual_olfactory_attention_switch-v0')
 observations_length = env.observation_space.n
 actions_length = env.action_space.n
 
-if history:
-    states_length = observations_length*observations_length
-else:
+if history == 0:
     states_length = observations_length
+elif history == 1:
+    states_length = observations_length*observations_length
 
 # for history, assume earlier observation was 'end' i.e. (observations_length-1)
-previous_observation = (observations_length-1)
+previous_observation = observations_length-1
 observation = env.reset()
-
-# IMPORTANT: states with history are encoded as 
-#  (current observation)*observations_length + previous observation
-if history: state = observation*observations_length + previous_observation
-else: state = observation
 #env.render() # prints on sys.stdout
+
+# IMPORTANT: states with history == 1 are encoded as 
+#  (current observation)*observations_length + previous observation
+#  or a string of observations for history > 1
+if history == 0: state = observation
+elif history == 1: state = observation*observations_length + previous_observation
+else: state = str(previous_observation)*history + str(observation)
 
 # for the first iteration of the loop,
 #  these states/observations are previous ones!
@@ -71,8 +74,8 @@ for t in range(1,steps):
     
     # IMPORTANT: states with history are encoded as 
     #  (current observation)*observations_length + previous observation
-    if history: state = observation*observations_length + previous_observation
-    else: state = observation
+    if history == 0: state = observation
+    elif history == 1: state = observation*observations_length + previous_observation
     
     # values of previous state get updated, not current state
     # don't change values of 'end' state, change only if not end state
@@ -89,14 +92,14 @@ for t in range(1,steps):
         # enforcing that end state has zero value and zero Q_array[end,:]
         # not actually needed since I don't change these above as
         #  enforced via `if previous_observation != observations_length-1:`
-        if history:
+        if history == 0:
+            value_vector[-1] = 0
+            Q_array[-1,:] = 0            
+        elif history == 1:
             # IMPORTANT: states with history are encoded as 
             #  (current observation)*observations_length + previous observation
             value_vector[-observations_length:] = 0
             Q_array[-observations_length,:] = 0
-        else:
-            value_vector[-1] = 0
-            Q_array[-1,:] = 0            
 
     previous_observation = observation
     previous_state = state
