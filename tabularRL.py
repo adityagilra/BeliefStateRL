@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 # uncomment one of these
 #history = 0 # observation is state
 #history = 1 # use previous and current observation as state
-history = 2 # n recent observations as state
+history = 3 # n recent observations as state
 
 # state is a concatenated string of previous history observations
 # separator is used to separate observations
@@ -25,8 +25,8 @@ epsilon = 0.1 # exploration rate in epsilon-greedy policy
 
 # uncomment one of these environments,
 #  with or without blank state at start of each trial
-#env = gym.make('visual_olfactory_attention_switch-v0')
-env = gym.make('visual_olfactory_attention_switch_no_blank-v0')
+env = gym.make('visual_olfactory_attention_switch-v0')
+#env = gym.make('visual_olfactory_attention_switch_no_blank-v0')
 
 observations_length = env.observation_space.n
 actions_length = env.action_space.n
