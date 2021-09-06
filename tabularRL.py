@@ -23,7 +23,11 @@ policy = 1 # epsilon-greedy
 alpha = 0.1 # TD learning rate
 epsilon = 0.1 # exploration rate in epsilon-greedy policy
 
-env = gym.make('visual_olfactory_attention_switch-v0')
+# uncomment one of these environments,
+#  with or without blank state at start of each trial
+#env = gym.make('visual_olfactory_attention_switch-v0')
+env = gym.make('visual_olfactory_attention_switch_no_blank-v0')
+
 observations_length = env.observation_space.n
 actions_length = env.action_space.n
 
