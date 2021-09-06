@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 # uncomment one of these
 #history = 0 # observation is state
 #history = 1 # use previous and current observation as state
-history = 5 # n recent observations as state
+history = 2 # n recent observations as state
 
 # state is a concatenated string of previous history observations
 # separator is used to separate observations
@@ -169,5 +169,7 @@ plt.plot(average_reward_around_o2v_transition)
 plt.plot([half_window,half_window],\
             [min(average_reward_around_o2v_transition),\
                 max(average_reward_around_o2v_transition)])
+plt.xlabel('time steps around olfactory to visual transition')
+plt.ylabel('average reward on time step')
 
 plt.show()

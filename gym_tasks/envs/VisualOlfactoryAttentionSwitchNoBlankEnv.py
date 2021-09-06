@@ -116,7 +116,7 @@ class VisualOlfactoryAttentionSwitchNoBlankEnv(Env):
         # end trial
         self.done_trial = True        
         # end state is shown here
-        self.observation_number = 5
+        self.observation_number = 4
 
     def _needless_lick(self, action):
         # licking to end or blank stimulus,
@@ -148,67 +148,55 @@ class VisualOlfactoryAttentionSwitchNoBlankEnv(Env):
         # visual block
         if self.block_number == 0:
             if self.time_index == 0:
-                # licking to end stimulus is wasteful
-                self._needless_lick(action)
-                # blank stimulus is shown now
-                self.observation_number = 0
-                
-            elif self.time_index == 1:
                 # licking to blank stimulus is wasteful
                 self._needless_lick(action)
 
                 # one of visual stimuli is shown now
                 self.observation_number = \
-                        1 + int(self.np_random.uniform()*2)
+                        int(self.np_random.uniform()*2)
 
                 # lick on next time step if first visual stimuli
-                if self.observation_number == 1:
+                if self.observation_number == 0:
                     self.target_action_number = 1
                     
-            elif self.time_index == 2:
-                self._reward_and_end_trial(1,action,last_target_action_number)
+            elif self.time_index == 1:
+                self._reward_and_end_trial(0,action,last_target_action_number)
                 
         # olfactory block
         elif self.block_number == 1:
             if self.time_index == 0:
-                # licking to end stimulus is wasteful
-                self._needless_lick(action)
-                # blank stimulus is shown now
-                self.observation_number = 0
-                
-            elif self.time_index == 1:
                 # licking to blank stimulus is wasteful
                 self._needless_lick(action)
 
                 if self.np_random.uniform() < 0.7:
                     # one of visual stimuli is shown now, unrewarded
                     self.observation_number = \
-                            1 + int(self.np_random.uniform()*2)
+                            int(self.np_random.uniform()*2)
                 else:
                     # one of olfactory stimuli is shown now
                     self.observation_number = \
-                            3 + int(self.np_random.uniform()*2)
+                            2 + int(self.np_random.uniform()*2)
                     # lick on next time step if first olfactory stimuli
-                    if self.observation_number == 3:
+                    if self.observation_number == 2:
                         self.target_action_number = 1
                     
-            elif self.time_index == 2:
-                if self.observation_number >= 3:
-                    self._reward_and_end_trial(3,action,last_target_action_number)
+            elif self.time_index == 1:
+                if self.observation_number >= 2:
+                    self._reward_and_end_trial(2,action,last_target_action_number)
                 else:
                     # licking to visual stimulus in olfactory block is wasteful
                     self._needless_lick(action)
                         
                     # one of olfactory stimuli is shown now
                     self.observation_number = \
-                            3 + int(self.np_random.uniform()*2)
+                            2 + int(self.np_random.uniform()*2)
 
                     # lick on next time step if first olfactory stimuli
-                    if self.observation_number == 3:
+                    if self.observation_number == 2:
                         self.target_action_number = 1
 
-            elif self.time_index == 3:
-                self._reward_and_end_trial(3,action,last_target_action_number)
+            elif self.time_index == 2:
+                self._reward_and_end_trial(2,action,last_target_action_number)
 
         self.last_action = action
 
