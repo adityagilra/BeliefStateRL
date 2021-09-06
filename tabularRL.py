@@ -20,8 +20,16 @@ separator = '*'
 #policy = 0 # random
 policy = 1 # epsilon-greedy
 
+steps = 1000000
+
 alpha = 0.1 # TD learning rate
-epsilon = 0.1 # exploration rate in epsilon-greedy policy
+epsilon = 0.1 # exploration probability in epsilon-greedy policy
+# uncomment one of these, exploration_decay doesn't make much difference
+#exploration_decay = True
+exploration_decay = False
+# if exploration_decay is True,
+#  exploration decays to zero over this time scale
+exploration_decay_time_steps = 100000
 
 # uncomment one of these environments,
 #  with or without blank state at start of each trial
@@ -62,7 +70,6 @@ else:
     value_vector = {state: 0}
     Q_array = {state: np.zeros(actions_length)}
 
-steps = 1000000
 reward_vec = np.zeros(steps)
 cumulative_reward = np.zeros(steps)
 block_vector = np.zeros(steps)
@@ -71,7 +78,12 @@ for t in range(1,steps):
     if policy == 0:
         action = env.action_space.sample()
     elif policy == 1:
-        if np.random.uniform() < epsilon:
+        # explore with a decreasing probability over exploration_decay_time_steps
+        if exploration_decay:
+            exploration_rate = epsilon*np.clip(1.-t/exploration_decay_time_steps,0,1)
+        else:
+            exploration_rate = epsilon
+        if np.random.uniform() < exploration_rate:
             action = env.action_space.sample()
         else:
             if history <= 1:
@@ -117,7 +129,7 @@ for t in range(1,steps):
                                     - Q_array[previous_state][action])            
 
     if done:
-        print("Finished after {} timesteps".format(t+1))
+        print("Finished a trial after {} timesteps".format(t+1))
         ## enforcing that end state has zero value and zero Q_array[end,:]
         ## NOT needed since I don't update these above as enforced
         ##  via `if previous_observation != observations_length-1:`
@@ -155,14 +167,17 @@ print(Q_array)
 olfactory_to_visual_transitions = np.where(np.diff(block_vector)==-1)[0]
 half_window = 50
 average_reward_around_o2v_transition = np.zeros(half_window*2)
+num_transitions_averaged = 0
 for transition in olfactory_to_visual_transitions:
-    window_min = max((0,transition-half_window))
-    window_max = min((transition+half_window,steps))
-    window_start = window_min-transition+half_window
-    window_end = half_window+window_max-transition
-    average_reward_around_o2v_transition[window_start:window_end] \
-            += reward_vec[window_min:window_max]
-average_reward_around_o2v_transition /= len(olfactory_to_visual_transitions)
+    if transition > exploration_decay_time_steps:
+        window_min = max((0,transition-half_window))
+        window_max = min((transition+half_window,steps))
+        window_start = window_min-transition+half_window
+        window_end = half_window+window_max-transition
+        average_reward_around_o2v_transition[window_start:window_end] \
+                += reward_vec[window_min:window_max]
+        num_transitions_averaged += 1
+average_reward_around_o2v_transition /= num_transitions_averaged
 
 fig3 = plt.figure()
 plt.plot(average_reward_around_o2v_transition)
