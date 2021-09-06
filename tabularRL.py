@@ -7,9 +7,13 @@ import matplotlib.pyplot as plt
 # if history, then store current and previous observations as state
 # else just store current observation as state
 # uncomment one of these
-history = 0 # observation is state
+#history = 0 # observation is state
 #history = 1 # use previous and current observation as state
-#history = 5 # n recent observations as state
+history = 5 # n recent observations as state
+
+# state is a concatenated string of previous history observations
+# separator is used to separate observations
+separator = '*'
 
 # policy can be one of these
 # uncomment one
@@ -38,7 +42,7 @@ observation = env.reset()
 #  or a string of observations for history > 1
 if history == 0: state = observation
 elif history == 1: state = observation*observations_length + previous_observation
-else: state = str(previous_observation)*history + str(observation)
+else: state = (str(previous_observation)+separator)*history + str(observation)
 
 # for the first iteration of the loop,
 #  these states/observations are previous ones!
@@ -47,8 +51,12 @@ previous_state = state
 
 # not all combinations of observations exist in the task,
 #  but we still allocate space for those, they'll just remain 0.
-value_vector = np.zeros(states_length)
-Q_array = np.zeros((states_length,actions_length))
+if history <= 1:
+    value_vector = np.zeros(states_length)
+    Q_array = np.zeros((states_length,actions_length))
+else:
+    value_vector = {state: 0}
+    Q_array = {state: np.zeros(actions_length)}
 
 steps = 1000000
 reward_vec = np.zeros(steps)
@@ -62,7 +70,10 @@ for t in range(1,steps):
         if np.random.uniform() < epsilon:
             action = env.action_space.sample()
         else:
-            action = np.argmax(Q_array[previous_state,:])
+            if history <= 1:
+                action = np.argmax(Q_array[previous_state,:])
+            else:
+                action = np.argmax(Q_array[previous_state])
 
     observation, reward, done, info = env.step(action)
     #print(observation, reward, done, info)
@@ -76,30 +87,51 @@ for t in range(1,steps):
     #  (current observation)*observations_length + previous observation
     if history == 0: state = observation
     elif history == 1: state = observation*observations_length + previous_observation
+    else: 
+        states_list = previous_state.split(separator)
+        # drop earliest observation in history and add current observation to state
+        state = separator.join(states_list[1:])+separator+str(observation)
+        if state not in value_vector.keys():
+            value_vector[state] = 0.
+            Q_array[state] = np.zeros(actions_length)
     
     # values of previous state get updated, not current state
-    # don't change values of 'end' state, change only if not end state
+    # should not change values of 'end' state 
+    #  (for a finite horizon MDP, value of end state = 0),
+    # change only if previous observation is not end state
     if previous_observation != observations_length-1:
         value_prediction_error = reward + value_vector[state] \
                                         - value_vector[previous_state]
         value_vector[previous_state] += alpha * value_prediction_error
-        Q_array[previous_state,action] += \
-                alpha * (reward + value_vector[state] \
-                                - Q_array[previous_state,action])
+        if history <= 1:
+            Q_array[previous_state,action] += \
+                    alpha * (reward + value_vector[state] \
+                                    - Q_array[previous_state,action])
+        else:
+            Q_array[previous_state][action] += \
+                    alpha * (reward + value_vector[state] \
+                                    - Q_array[previous_state][action])            
 
     if done:
         print("Finished after {} timesteps".format(t+1))
-        # enforcing that end state has zero value and zero Q_array[end,:]
-        # not actually needed since I don't change these above as
-        #  enforced via `if previous_observation != observations_length-1:`
-        if history == 0:
-            value_vector[-1] = 0
-            Q_array[-1,:] = 0            
-        elif history == 1:
-            # IMPORTANT: states with history are encoded as 
-            #  (current observation)*observations_length + previous observation
-            value_vector[-observations_length:] = 0
-            Q_array[-observations_length,:] = 0
+        ## enforcing that end state has zero value and zero Q_array[end,:]
+        ## NOT needed since I don't update these above as enforced
+        ##  via `if previous_observation != observations_length-1:`
+        #if history == 0:
+        #    value_vector[-1] = 0.
+        #    Q_array[-1,:] = 0.            
+        #elif history == 1:
+        #    # IMPORTANT: states with history are encoded as 
+        #    #  (current observation)*observations_length + previous observation
+        #    value_vector[-observations_length:] = 0.
+        #    Q_array[-observations_length,:] = 0.
+        #else:
+        #    for state_key in value_vector.keys():
+        #        states_list = state_key.split(separator)
+        #        # all states that end with an 'end' observation are set to zero
+        #        if int(states_list[-1]) == observations_length-1:
+        #            value_vector[state_key] = 0.
+        #            Q_array[state_key] = 0.
 
     previous_observation = observation
     previous_state = state
