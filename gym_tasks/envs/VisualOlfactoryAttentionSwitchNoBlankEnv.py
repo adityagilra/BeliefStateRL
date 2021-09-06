@@ -42,7 +42,7 @@ class VisualOlfactoryAttentionSwitchNoBlankEnv(Env):
     observations = visual_stimuli + olfactory_stimuli + ['end']
 
     def __init__(self, reward_size=10, punish_factor=0.5, lick_without_reward_factor=0.2):
-        super(VisualOlfactoryAttentionSwitchEnv, self).__init__()
+        super(VisualOlfactoryAttentionSwitchNoBlankEnv, self).__init__()
 
         # reward for correct response
         self.reward_size = reward_size
