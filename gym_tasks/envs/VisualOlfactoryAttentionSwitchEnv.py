@@ -53,6 +53,8 @@ class VisualOlfactoryAttentionSwitchEnv(Env):
         
         self.observation_space = Discrete(len(self.observations))
         self.action_space = Discrete(len(self.actions))
+        
+        self.end_of_trial_observation_number = len(self.observations)-1
 
         # various attributes that are set by seed() and reset()
         self.block_number = None
@@ -92,7 +94,7 @@ class VisualOlfactoryAttentionSwitchEnv(Env):
         return self.observation_number
 
     def _reward_and_end_trial(self, target_observation_number, action, last_target_action_number):
-        # give reward / punishement
+        # give reward / punishment
         if self.observation_number == target_observation_number:
             if action == last_target_action_number:
                 # give reward
@@ -115,7 +117,7 @@ class VisualOlfactoryAttentionSwitchEnv(Env):
         # end trial
         self.done_trial = True        
         # end state is shown here
-        self.observation_number = 5
+        self.observation_number = self.end_of_trial_observation_number
 
     def _needless_lick(self, action):
         # licking to end or blank stimulus,
@@ -144,6 +146,20 @@ class VisualOlfactoryAttentionSwitchEnv(Env):
         last_target_action_number = self.target_action_number
         self.target_action_number = 0
 
+        # local method which computes the next state, reward etc.
+        self._step(action, last_target_action_number)
+
+        self.last_action = action
+
+        return self.observation_number, self.reward, self.done_trial, \
+                        {'target_act': self.target_action_number,\
+                        'block': self.block_number}
+
+    def _step(self, action, last_target_action_number):
+        """
+        Local method which computes the next state, reward etc.
+        Don't call this directly, call self.step(action).
+        """
         # visual block
         if self.block_number == 0:
             if self.time_index == 0:
@@ -208,12 +224,6 @@ class VisualOlfactoryAttentionSwitchEnv(Env):
 
             elif self.time_index == 3:
                 self._reward_and_end_trial(3,action,last_target_action_number)
-
-        self.last_action = action
-
-        return self.observation_number, self.reward, self.done_trial, \
-                        {'target_act': self.target_action_number,\
-                        'block': self.block_number}
 
     def render(self, mode='human'):
         self.outfile.write("block: "+self.blocks[self.block_number]+", ")
