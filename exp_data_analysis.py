@@ -69,13 +69,15 @@ def get_exp_reward_around_o2v_transition():
         # positive reward if mouse licks and rewarded stimulus, else negative reward
         # cannot use python or and and operators for element-wise operations, instead using numpy | and & operators
         olfactory_to_visual_transition_positive_rewards = ( (olfactory_to_visual_transition_stimuli==1) | \
-                                                                (olfactory_to_visual_transition_stimuli==3) | \
                                                                 (olfactory_to_visual_transition_stimuli==5) ) \
                                                             & (olfactory_to_visual_transition_licks==1) 
-        # 10 for rewarded lick, -1 otherwise
+        olfactory_to_visual_transition_negative_rewards = ( (olfactory_to_visual_transition_stimuli==2) | \
+                                                                (olfactory_to_visual_transition_stimuli==6) ) \
+                                                            & (olfactory_to_visual_transition_licks==1) 
+        # 10 for lick to rewarded stimulus, 0 for nolick to rewarded or unrewarded stimulus, -5 for lick to unrewarded stimulus
         olfactory_to_visual_transition_rewards = \
             olfactory_to_visual_transition_positive_rewards * reward_size \
-                - np.logical_not(olfactory_to_visual_transition_positive_rewards) * punish_factor*reward_size
+                - olfactory_to_visual_transition_negative_rewards * punish_factor*reward_size
         print("shape of rewards array around transition",olfactory_to_visual_transition_rewards.shape)
         average_reward_around_o2v_transition = np.mean(olfactory_to_visual_transition_rewards,axis=0)
         
