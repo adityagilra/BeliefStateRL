@@ -43,7 +43,8 @@ from gym_tasks.envs.VisualOlfactoryAttentionSwitchEnv import VisualOlfactoryAtte
 
 class VisualOlfactoryAttentionSwitchNoBlankEnv(VisualOlfactoryAttentionSwitchEnv):
 
-    def __init__(self, reward_size=10, punish_factor=0.5, lick_without_reward_factor=0.2):
+    def __init__(self, reward_size=10, punish_factor=0.5,
+                        lick_without_reward_factor=0.2):
         super(VisualOlfactoryAttentionSwitchNoBlankEnv, self).__init__(
                     reward_size, punish_factor, lick_without_reward_factor )
 

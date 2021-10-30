@@ -1,3 +1,9 @@
+"""
+Context-belief-based agent
+
+by Aditya Gilra, Sep-Oct 2021
+"""
+
 import gym
 import numpy as np
 import gym_tasks
@@ -5,7 +11,8 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 # reproducible random number generation
-np.random.seed(1)
+seed = 1
+np.random.seed(seed)
 
 # if history, then store current and previous observations as state
 # else just store current observation as state
@@ -44,11 +51,14 @@ learning_time_steps = exploration_decay_time_steps
 # this rate is applicable after both contextual tasks are learned,
 #  but currently, we don't incorporate context learning,
 #  so context prediction, detection and switching are applied from the start
-belief_switching_rate = 0.2
+belief_switching_rate = 0.7
 
 # uncomment one of these environments,
 #  with or without blank state at start of each trial
+# OBSOLETE - with blanks environment won't work,
+#  as I've HARDCODED observations to stimuli encoding
 #env = gym.make('visual_olfactory_attention_switch-v0')
+# HARDCODED these observations to stimuli encoding
 env = gym.make('visual_olfactory_attention_switch_no_blank-v0')
 
 observations_length = env.observation_space.n
@@ -72,11 +82,12 @@ context_belief_probabilities[0] = 1 # at start, agent assumes context 0
 weight_contexts_by_probabilities = False
 
 # number of steps on each side of the transition to consider
-half_window = 22
+half_window = 30
 
 def beliefRL(belief_switching_rate):
     # for history, assume earlier observation was 'end'
     previous_observation = end_observation
+    env.seed(seed)
     observation = env.reset()
     #env.render() # prints on sys.stdout
 
@@ -96,8 +107,12 @@ def beliefRL(belief_switching_rate):
     reward_vector = np.zeros(steps)
     cumulative_reward = np.zeros(steps)
     block_vector = np.zeros(steps)
-    reward_vector_exp_compare = []
-    block_vector_exp_compare = []
+    # lists where we don't keep steps (e.g. end of trial, blanks)
+    reward_vector_exp_compare = np.zeros(steps)
+    block_vector_exp_compare = np.zeros(steps)
+    stimulus_vector_exp_compare = np.zeros(steps)
+    action_vector_exp_compare = np.zeros(steps)
+    exp_step = 0 # step index as would be saved in experiment
     
     trial_num = 0
 
@@ -105,6 +120,7 @@ def beliefRL(belief_switching_rate):
     global context_belief_probabilities
 
     for t in range(1,steps):
+        ############# choose an action
         if policy == 0:
             # random policy
             action = env.action_space.sample()
@@ -136,30 +152,51 @@ def beliefRL(belief_switching_rate):
                 else:
                     action = np.argmax(Q_array[previous_state][context_assumed_now,:])
 
+        ############### take the action in the environment / task
         observation, reward, done, info = env.step(action)
         #print(observation, reward, done, info)
         #env.render() # prints on sys.stdout
 
+        ############### record reward, stimulus/observation and response/action
         # don't keep reward for end of trial steps,
         #  since reward for end of trial 'observation' is not experimentally recorded!
         # also keep rewards only after learning is done!
+        # HARDCODED for no-blanks environment: assume blank observation is not present,
+        #  so no need to filter out blanks similar to end_observation
         if t>learning_time_steps and previous_observation!=end_observation:
-            reward_vector_exp_compare.append(reward)
-            block_vector_exp_compare.append(info['block'])
+            reward_vector_exp_compare[exp_step] = reward
+            # note that block number changes on the end time step of a trial,
+            #  so use detected transition_index+1 to get actual transition_index!
+            block_vector_exp_compare[exp_step] = info['block']
+            # HARDCODED for no-blanks environment: observation numbers to stimulus numbers mapping
+            # stimuli are: 1 rewarded visual, 2 unrewarded visual, 3 irrelevant 'rewarded' visual,
+            #               4 irrelevant 'unrewarded', 5 rewarded olfactory, 6 unrewarded olfactory
+            # actions are 0 nolick, 1 lick
+            if block_vector_exp_compare[exp_step] == 0: # visual block
+                stimulus_vector_exp_compare[exp_step] = previous_observation+1 # 0 and 1 mapped to 1 and 2
+            else: # olfactory block
+                stimulus_vector_exp_compare[exp_step] = previous_observation+3 # 0 to 3 mapped to 3 to 6
+            action_vector_exp_compare[exp_step] = action
+
+            # increment the running index of the saved vectors
+            exp_step += 1
 
         reward_vector[t] = reward
         cumulative_reward[t] = cumulative_reward[t-1]+reward
-        block_vector[t] = info['block']
+        block_vector[t] = info['block']        
         
+        ################ observation processing
         # IMPORTANT: states with history are encoded as string of observations
         #  separated by a separator string/character
         states_list = previous_state.split(separator)
         # drop earliest observation in history and add current observation to state
         state = separator.join(states_list[1:])+separator+str(observation)
+        ################ add in a new state if not previously encountered
         if state not in value_vector.keys():
             value_vector[state] = np.zeros(n_contexts)
             Q_array[state] = np.zeros((n_contexts,actions_length))
         
+        ################ update state and Q(state,action) values
         # values of previous state get updated, not current state
         # should not change values of 'end' state 
         #  (for a finite horizon MDP, value of end state = 0),
@@ -180,6 +217,7 @@ def beliefRL(belief_switching_rate):
                         alpha * ( reward + value_vector[state][context_assumed_now] \
                                     - Q_array[previous_state][context_assumed_now,action] )
 
+        ################ end of trial processing, including context belief update
         if done:
             # context prediction error and update context_belief_probabilities
             #  we don't need to predict transitions from each state to the next.
@@ -211,36 +249,61 @@ def beliefRL(belief_switching_rate):
                 print("Finished trial number {} after {} timesteps".format(trial_num,t+1))
             
             ## enforcing that end state has zero value and zero Q_array[end,:]
-            ## is NOT needed since I don't update these above as enforced
+            ## is NOT needed since I don't update these as enforced above
             ##  via `if previous_observation != observations_length-1:`
 
         previous_observation = observation
         previous_state = state
 
-    # calculate mean reward around transitions
+    ################# processing after agent simulation has ended
+    ################# calculate mean reward and mean action given stimulus, around transitions
+    # exp_step, at end of time loop above, equals end index saved in _exp_compare vectors
+    # clip vector at exp_step, to avoid detecting a last spurious transtion in block_vector_exp_compare
     olfactory_to_visual_transitions = \
-        np.where(np.diff(block_vector_exp_compare)==-1)[0]
+        np.where(np.diff(block_vector_exp_compare[:exp_step])==-1)[0]
+    # note that block number changes on the end time step of a trial,
+    #  so use detected transition_index+1 to get actual transition_index!
+    olfactory_to_visual_transitions += 1
     print("o2v transition at steps ",olfactory_to_visual_transitions)
     average_reward_around_o2v_transition = np.zeros(half_window*2)
+    average_action_to_stimulus = np.zeros((6,half_window*2,2)) # 6 stimuli, 2 actions
     num_transitions_averaged = 0
     for transition in olfactory_to_visual_transitions:
+        # take edge effects into account when taking a window around transition
+        # i.e. don't go beyond the end and start of saved data if transition is close to an edge
         window_min = max((0,transition-half_window))
-        window_max = min((transition+half_window,len(block_vector_exp_compare)))
+        # exp_step, at end of time loop above, equals end index saved in _exp_compare vectors
+        window_max = min((transition+half_window,exp_step))
         window_start = window_min-transition+half_window
         window_end = half_window+window_max-transition
         average_reward_around_o2v_transition[window_start:window_end] \
                 += reward_vector_exp_compare[window_min:window_max]
+
+        ######### actions given stimuli around transition
+        for stimulus_number in range(1,7):
+            # bitwise and takes precedence over equality testing, so need brackets
+            # stimuli are saved in experiment as 1 to 6
+            # since not all time steps will have a particular stimulus,
+            #  I encode lick as 1, no lick (with stimulus) as -1, and no stimulus as 0 
+            average_action_to_stimulus[stimulus_number-1,window_start:window_end,0] -= \
+                   (stimulus_vector_exp_compare[window_min:window_max]==stimulus_number) \
+                            & (action_vector_exp_compare[window_min:window_max]==0)
+            average_action_to_stimulus[stimulus_number-1,window_start:window_end,1] += \
+                   (stimulus_vector_exp_compare[window_min:window_max]==stimulus_number) \
+                            & (action_vector_exp_compare[window_min:window_max]==1)
+
         num_transitions_averaged += 1
     average_reward_around_o2v_transition /= num_transitions_averaged
+    average_action_to_stimulus /= num_transitions_averaged
 
     #print(value_vector)
     #print(Q_array)
 
-    return average_reward_around_o2v_transition
+    return average_reward_around_o2v_transition, average_action_to_stimulus
 
 if __name__ == "__main__":
-    # call the task function and obtain the mean reward around transition
-    average_reward_around_o2v_transition = beliefRL(belief_switching_rate)
+    # call the task function and obtain the mean reward and action given stimulus around transition
+    average_reward_around_o2v_transition, average_action_to_stimulus = beliefRL(belief_switching_rate)
 
     #fig1 = plt.figure()
     #plt.plot(reward_vec)
@@ -251,7 +314,6 @@ if __name__ == "__main__":
     #fig2 = plt.figure()
     #plt.plot(cumulative_reward)
 
-
     fig3 = plt.figure()
     plt.plot(average_reward_around_o2v_transition)
     plt.plot([half_window,half_window],\
@@ -259,5 +321,18 @@ if __name__ == "__main__":
                     max(average_reward_around_o2v_transition)])
     plt.xlabel('time steps around olfactory to visual transition')
     plt.ylabel('average reward on time step')
+
+    fig4, axes = plt.subplots(2, 3)
+    for stimulus_index in range(6):
+        row = stimulus_index//3
+        col = stimulus_index%3
+        axes[row,col].plot(average_action_to_stimulus[stimulus_index,:,0],',-r')
+        axes[row,col].plot(average_action_to_stimulus[stimulus_index,:,1],',-b')
+        axes[row,col].plot([half_window,half_window],\
+                [np.min(average_action_to_stimulus),\
+                    np.max(average_action_to_stimulus)],',-g')
+        axes[row,col].set_xlabel('steps at O2V transition')
+        axes[row,col].set_ylabel('average action on stimulus '+str(stimulus_index+1))
+    fig4.subplots_adjust(wspace=0.5,hspace=0.5)
 
     plt.show()

@@ -44,7 +44,8 @@ class VisualOlfactoryAttentionSwitchEnv(Env):
     actions = ['NoLick','Lick']
     observations = ['blank'] + visual_stimuli + olfactory_stimuli + ['end']
 
-    def __init__(self, reward_size=10, punish_factor=0.5, lick_without_reward_factor=0.2):
+    def __init__(self, reward_size=10, punish_factor=0.5,
+                        lick_without_reward_factor=0.2):
         super(VisualOlfactoryAttentionSwitchEnv, self).__init__()
 
         # reward for correct response
@@ -60,7 +61,7 @@ class VisualOlfactoryAttentionSwitchEnv(Env):
         
         self.end_of_trial_observation_number = len(self.observations)-1
 
-        # various attributes that are set by seed() and reset()
+        # various attributes that are set by reset()
         self.block_number = None
         self.observation_number = None
         self.last_action = None

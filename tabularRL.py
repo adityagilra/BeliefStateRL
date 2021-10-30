@@ -1,8 +1,18 @@
+"""
+Memory(i.e.History)-based agent
+
+by Aditya Gilra, Sep 2021
+"""
+
 import gym
 import numpy as np
 import gym_tasks
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+
+# reproducible random number generation
+seed = 1
+np.random.seed(seed)
 
 # if history, then store current and previous observations as state
 # else just store current observation as state
@@ -46,6 +56,7 @@ elif history == 1:
 
 # for history, assume earlier observation was 'end' i.e. (observations_length-1)
 previous_observation = observations_length-1
+env.seed(seed)
 observation = env.reset()
 #env.render() # prints on sys.stdout
 
