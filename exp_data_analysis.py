@@ -39,7 +39,7 @@ np.random.seed(1)
 #- lick : 1 if mouse licked, 0 if not
 #- RT: reaction time in seconds. If mouse did not respond will be NaN.
 
-# This .mat file has ans as a Matlab struct with fields control and exp as 1x1 Matlab structs
+# This .mat file has 'ans' as a Matlab struct with fields 'control' and 'exp' as 1x1 Matlab structs
 #  control and exp each contain sessionV2O, mouseV2O, sessionO2V and mouseO2V
 #   as 3x8, 1x8, 3x8 and 1x8 Matlab cells respectively.
 #   each cell is a 1x1 Matlab struct (or empty) having fields stimulus, lick and RT each ??x31 doubles.
@@ -74,14 +74,15 @@ def get_exp_reward_around_o2v_transition():
     number_of_mice = len(mouse_behaviour_data['ans']['control'][0,0]['mouseO2V'][0,0][0])
     mice_average_reward_around_o2v_transtion = np.zeros((number_of_mice,window))
     across_mice_average_reward = np.zeros(window)
-    mice_average_action_to_stimulus = np.zeros((number_of_mice,6,window,2)) # 6 stimuli, 2 actions
+    mice_actionscount_to_stimulus = np.zeros((number_of_mice,6,window,2)) # 6 stimuli, 2 actions
 
     for mouse_number in range(number_of_mice):
         # steps around transitions for one mouse
         # both these numpy arrays of doubles have size T x window,
         #  where T are the number of transitions
         olfactory_to_visual_transition_stimuli = behaviour_data[0,mouse_number][0,0]['stimulus']
-        olfactory_to_visual_transition_licks = behaviour_data[0,mouse_number][0,0]['lick']
+        # looks like 'lick' field doesn't contain licks but correct responses!
+        olfactory_to_visual_transition_corrects = behaviour_data[0,mouse_number][0,0]['lick']
         
         ######### reward around transition
         # positive reward if mouse licks and rewarded stimulus, else negative reward
@@ -90,11 +91,11 @@ def get_exp_reward_around_o2v_transition():
         olfactory_to_visual_transition_positive_rewards = \
                     ( (olfactory_to_visual_transition_stimuli==1) | \
                         (olfactory_to_visual_transition_stimuli==5) ) \
-                    & (olfactory_to_visual_transition_licks==1) 
+                    & (olfactory_to_visual_transition_corrects==1) 
         olfactory_to_visual_transition_negative_rewards = \
                     ( (olfactory_to_visual_transition_stimuli==2) | \
                         (olfactory_to_visual_transition_stimuli==6) ) \
-                    & (olfactory_to_visual_transition_licks==1)
+                    & (olfactory_to_visual_transition_corrects==0) # licked, 0 => incorrect
         # 10 for lick to rewarded stimulus,
         # 0 for nolick to rewarded or unrewarded stimulus,
         # -5 for lick to unrewarded stimulus
@@ -109,29 +110,39 @@ def get_exp_reward_around_o2v_transition():
         across_mice_average_reward += average_reward_around_o2v_transition
 
         ######### actions given stimuli around transition
-        for stimulus_number in range(6):
+        for stimulus_index in range(6):
             # bitwise and takes precedence over equality testing, so need brackets
-            # stimuli are saved in experiment as 1 to 6, while stimulus_number goes from 0 to 5
+            # stimuli are saved in experiment as 1 to 6, while stimulus_index goes from 0 to 5
             # since not all time steps will have a particular stimulus,
-            #  I encode lick as 1, no lick (with stimulus) as -1, and no stimulus as 0 
-            mice_average_action_to_stimulus[mouse_number,stimulus_number,:,0] -= \
-                   np.mean((olfactory_to_visual_transition_stimuli==stimulus_number+1) \
-                            & (olfactory_to_visual_transition_licks==0) , axis=0 )
-            mice_average_action_to_stimulus[mouse_number,stimulus_number,:,1] += \
-                   np.mean((olfactory_to_visual_transition_stimuli==stimulus_number+1) \
-                            & (olfactory_to_visual_transition_licks==1) , axis=0 )
+            #  olfactory_to_visual_transition_corrects encodes 0 as incorrect, 1 as correct response
+            #  I transform to counts of nolicks, and counts of licks
+            if stimulus_index in (0,4): correct_for_nolick,correct_for_lick = 0,1
+            else: correct_for_nolick,correct_for_lick = 1,0
+            mice_actionscount_to_stimulus[mouse_number,stimulus_index,:,0] += \
+                   np.sum((olfactory_to_visual_transition_stimuli==stimulus_index+1) \
+                            & (olfactory_to_visual_transition_corrects==correct_for_nolick),
+                        axis=0 )
+            mice_actionscount_to_stimulus[mouse_number,stimulus_index,:,1] += \
+                   np.sum((olfactory_to_visual_transition_stimuli==stimulus_index+1) \
+                            & (olfactory_to_visual_transition_corrects==correct_for_lick),
+                        axis=0 )
 
     across_mice_average_reward /= number_of_mice
 
     return (number_of_mice, across_mice_average_reward, \
                 mice_average_reward_around_o2v_transtion, \
-                mice_average_action_to_stimulus)
+                mice_actionscount_to_stimulus)
 
 if __name__ == "__main__":
     number_of_mice, across_mice_average_reward, \
         mice_average_reward_around_o2v_transtion, \
-        mice_average_action_to_stimulus = \
+        mice_actionscount_to_stimulus = \
             get_exp_reward_around_o2v_transition()
+    # normalize over the actions (last axis i.e. 3) to get probabilities
+    # add a small amount to denominator to avoid divide by zero!
+    mice_probability_action_given_stimulus = mice_actionscount_to_stimulus \
+                / ( np.sum(mice_actionscount_to_stimulus,axis=3)[:,:,:,np.newaxis] \
+                        + np.finfo(np.double).eps )
 
     fig1 = plt.figure()
     for mouse_number in range(number_of_mice):
@@ -139,7 +150,7 @@ if __name__ == "__main__":
     plt.plot(across_mice_average_reward,',-k')
     plt.plot([transition_index,transition_index],\
                 [np.min(mice_average_reward_around_o2v_transtion),\
-                    np.max(mice_average_reward_around_o2v_transtion)],',-g')
+                    np.max(mice_average_reward_around_o2v_transtion)],',-b')
     plt.xlabel('time steps around olfactory to visual transition')
     plt.ylabel('average reward on time step')
     
@@ -148,15 +159,17 @@ if __name__ == "__main__":
         row = stimulus_number//3
         col = stimulus_number%3
         for mouse_number in range(number_of_mice):
-            axes[row,col].plot(mice_average_action_to_stimulus[mouse_number,stimulus_number,:,0],',-',color=(1,0,0,0.25))
-            axes[row,col].plot(mice_average_action_to_stimulus[mouse_number,stimulus_number,:,1],',-',color=(0,0,1,0.25))
-        axes[row,col].plot(np.mean(mice_average_action_to_stimulus[:,stimulus_number,:,0],axis=0),',-r')
-        axes[row,col].plot(np.mean(mice_average_action_to_stimulus[:,stimulus_number,:,1],axis=0),',-b')
-        axes[row,col].plot([transition_index,transition_index],\
-                [np.min(mice_average_action_to_stimulus),\
-                    np.max(mice_average_action_to_stimulus)],',-g')
+            axes[row,col].plot(mice_probability_action_given_stimulus\
+                                    [mouse_number,stimulus_number,:,0],',-',color=(1,0,0,0.25))
+            axes[row,col].plot(mice_probability_action_given_stimulus\
+                                    [mouse_number,stimulus_number,:,1],',-',color=(0,0,1,0.25))
+        axes[row,col].plot(np.mean(mice_probability_action_given_stimulus\
+                                    [:,stimulus_number,:,0],axis=0),',-r')
+        axes[row,col].plot(np.mean(mice_probability_action_given_stimulus\
+                                    [:,stimulus_number,:,1],axis=0),',-b')
+        axes[row,col].plot([transition_index,transition_index],[0,1],',-g')
         axes[row,col].set_xlabel('steps at O2V transition')
-        axes[row,col].set_ylabel('average action on stimulus '+str(stimulus_number+1))
+        axes[row,col].set_ylabel('P(action|stimulus='+str(stimulus_number+1)+')')
     fig2.subplots_adjust(wspace=0.5,hspace=0.5)
 
     plt.show()
