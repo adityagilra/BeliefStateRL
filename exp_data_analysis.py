@@ -75,6 +75,7 @@ def get_exp_reward_around_o2v_transition():
     mice_average_reward_around_o2v_transtion = np.zeros((number_of_mice,window))
     across_mice_average_reward = np.zeros(window)
     mice_actionscount_to_stimulus = np.zeros((number_of_mice,6,window,2)) # 6 stimuli, 2 actions
+    mice_actionscount_to_stimulus_trials = np.zeros((number_of_mice,6,window,2)) # 6 stimuli, 2 actions
 
     for mouse_number in range(number_of_mice):
         # steps around transitions for one mouse
@@ -113,36 +114,83 @@ def get_exp_reward_around_o2v_transition():
         for stimulus_index in range(6):
             # bitwise and takes precedence over equality testing, so need brackets
             # stimuli are saved in experiment as 1 to 6, while stimulus_index goes from 0 to 5
-            # since not all time steps will have a particular stimulus,
             #  olfactory_to_visual_transition_corrects encodes 0 as incorrect, 1 as correct response
             #  I transform to counts of nolicks, and counts of licks
-            if stimulus_index in (0,4): correct_for_nolick,correct_for_lick = 0,1
-            else: correct_for_nolick,correct_for_lick = 1,0
+            if stimulus_index in (0,4): lick_to_correct = (0,1)
+            else: lick_to_correct = (1,0)
+
+            ##### steps around transition
+            ##### not all time steps will have a particular stimulus!
             mice_actionscount_to_stimulus[mouse_number,stimulus_index,:,0] += \
                    np.sum((olfactory_to_visual_transition_stimuli==stimulus_index+1) \
-                            & (olfactory_to_visual_transition_corrects==correct_for_nolick),
+                            & (olfactory_to_visual_transition_corrects==lick_to_correct[0]),
                         axis=0 )
             mice_actionscount_to_stimulus[mouse_number,stimulus_index,:,1] += \
                    np.sum((olfactory_to_visual_transition_stimuli==stimulus_index+1) \
-                            & (olfactory_to_visual_transition_corrects==correct_for_lick),
+                            & (olfactory_to_visual_transition_corrects==lick_to_correct[1]),
                         axis=0 )
+
+            ##### trials around transition
+            ##### convert from steps to trials for each session, while maintaining transition index at the center
+            for session_index in range(olfactory_to_visual_transition_stimuli.shape[0]):
+                trials_indices_before_transition = \
+                        np.where(olfactory_to_visual_transition_stimuli\
+                                    [session_index,:transition_index]==stimulus_index+1)[0]
+                trials_indices_after_transition = \
+                        np.where(olfactory_to_visual_transition_stimuli\
+                                    [session_index,transition_index:]==stimulus_index+1)[0]
+                for lick in (0,1):
+                    # align before transition
+                    if len(trials_indices_before_transition)>0:
+                        licks_trials = (olfactory_to_visual_transition_corrects\
+                                        [session_index,trials_indices_before_transition]==lick_to_correct[lick])
+                        mice_actionscount_to_stimulus_trials[mouse_number,stimulus_index,
+                                transition_index-len(licks_trials):transition_index,lick] += licks_trials
+                    # align after transition
+                    if len(trials_indices_after_transition)>0:
+                        licks_trials = (olfactory_to_visual_transition_corrects\
+                                        [session_index,trials_indices_after_transition]==lick_to_correct[lick])
+                        mice_actionscount_to_stimulus_trials[mouse_number,stimulus_index,
+                                transition_index:len(licks_trials)+transition_index,lick] += licks_trials
 
     across_mice_average_reward /= number_of_mice
 
     return (number_of_mice, across_mice_average_reward, \
                 mice_average_reward_around_o2v_transtion, \
-                mice_actionscount_to_stimulus)
+                mice_actionscount_to_stimulus, mice_actionscount_to_stimulus_trials)
 
-if __name__ == "__main__":
-    number_of_mice, across_mice_average_reward, \
-        mice_average_reward_around_o2v_transtion, \
-        mice_actionscount_to_stimulus = \
-            get_exp_reward_around_o2v_transition()
+def plot_prob_actions_given_stimuli(mice_actionscount_to_stimulus, units='steps'):
     # normalize over the actions (last axis i.e. 3) to get probabilities
     # add a small amount to denominator to avoid divide by zero!
     mice_probability_action_given_stimulus = mice_actionscount_to_stimulus \
                 / ( np.sum(mice_actionscount_to_stimulus,axis=3)[:,:,:,np.newaxis] \
                         + np.finfo(np.double).eps )
+    mean_probability_action_given_stimulus = np.sum(mice_actionscount_to_stimulus,axis=0) \
+                / ( np.sum(mice_actionscount_to_stimulus,axis=(0,3))[:,:,np.newaxis] \
+                        + np.finfo(np.double).eps )    
+    fig, axes = plt.subplots(2, 3)
+    for stimulus_number in range(6):
+        row = stimulus_number//3
+        col = stimulus_number%3
+        for mouse_number in range(number_of_mice):
+            axes[row,col].plot(mice_probability_action_given_stimulus\
+                                    [mouse_number,stimulus_number,:,0],',-',color=(1,0,0,0.25))
+            axes[row,col].plot(mice_probability_action_given_stimulus\
+                                    [mouse_number,stimulus_number,:,1],',-',color=(0,0,1,0.25))
+        axes[row,col].plot(mean_probability_action_given_stimulus\
+                                    [stimulus_number,:,0],',-r')
+        axes[row,col].plot(mean_probability_action_given_stimulus\
+                                    [stimulus_number,:,1],',-b')
+        axes[row,col].plot([transition_index,transition_index],[0,1],',-g')
+        axes[row,col].set_xlabel(units+' around O2V transition')
+        axes[row,col].set_ylabel('P(action|stimulus='+str(stimulus_number+1)+')')
+    fig.subplots_adjust(wspace=0.5,hspace=0.5)
+
+if __name__ == "__main__":
+    number_of_mice, across_mice_average_reward, \
+        mice_average_reward_around_o2v_transtion, \
+        mice_actionscount_to_stimulus, mice_actionscount_to_stimulus_trials = \
+            get_exp_reward_around_o2v_transition()
 
     fig1 = plt.figure()
     for mouse_number in range(number_of_mice):
@@ -154,22 +202,8 @@ if __name__ == "__main__":
     plt.xlabel('time steps around olfactory to visual transition')
     plt.ylabel('average reward on time step')
     
-    fig2, axes = plt.subplots(2, 3)
-    for stimulus_number in range(6):
-        row = stimulus_number//3
-        col = stimulus_number%3
-        for mouse_number in range(number_of_mice):
-            axes[row,col].plot(mice_probability_action_given_stimulus\
-                                    [mouse_number,stimulus_number,:,0],',-',color=(1,0,0,0.25))
-            axes[row,col].plot(mice_probability_action_given_stimulus\
-                                    [mouse_number,stimulus_number,:,1],',-',color=(0,0,1,0.25))
-        axes[row,col].plot(np.mean(mice_probability_action_given_stimulus\
-                                    [:,stimulus_number,:,0],axis=0),',-r')
-        axes[row,col].plot(np.mean(mice_probability_action_given_stimulus\
-                                    [:,stimulus_number,:,1],axis=0),',-b')
-        axes[row,col].plot([transition_index,transition_index],[0,1],',-g')
-        axes[row,col].set_xlabel('steps at O2V transition')
-        axes[row,col].set_ylabel('P(action|stimulus='+str(stimulus_number+1)+')')
-    fig2.subplots_adjust(wspace=0.5,hspace=0.5)
-
+    plot_prob_actions_given_stimuli(mice_actionscount_to_stimulus)
+    
+    plot_prob_actions_given_stimuli(mice_actionscount_to_stimulus_trials,'trials')
+    
     plt.show()
