@@ -133,12 +133,21 @@ def get_exp_reward_around_o2v_transition():
             ##### trials around transition
             ##### convert from steps to trials for each session, while maintaining transition index at the center
             for session_index in range(olfactory_to_visual_transition_stimuli.shape[0]):
+                # we show time steps involving visual stimuli only or olfactory stimuli only
+                #  if stimulus_index denotes a visual or olfactory stimulus respectively
+                if stimulus_index in (0,1): relevant_stimuli = (1,2)
+                elif stimulus_index in (2,3): relevant_stimuli = (3,4)
+                elif stimulus_index in (4,5): relevant_stimuli = (5,6)
                 trials_indices_before_transition = \
-                        np.where(olfactory_to_visual_transition_stimuli\
-                                    [session_index,:transition_index]==stimulus_index+1)[0]
+                        np.where( (olfactory_to_visual_transition_stimuli\
+                                    [session_index,:transition_index]==relevant_stimuli[0]) \
+                                  | (olfactory_to_visual_transition_stimuli\
+                                    [session_index,:transition_index]==relevant_stimuli[1]) )[0]
                 trials_indices_after_transition = \
-                        np.where(olfactory_to_visual_transition_stimuli\
-                                    [session_index,transition_index:]==stimulus_index+1)[0]
+                        np.where( (olfactory_to_visual_transition_stimuli\
+                                    [session_index,transition_index:]==relevant_stimuli[0]) \
+                                  | (olfactory_to_visual_transition_stimuli\
+                                    [session_index,transition_index:]==relevant_stimuli[1]) )[0]
                 for lick in (0,1):
                     # align before transition
                     if len(trials_indices_before_transition)>0:
@@ -160,30 +169,36 @@ def get_exp_reward_around_o2v_transition():
                 mice_actionscount_to_stimulus, mice_actionscount_to_stimulus_trials)
 
 def plot_prob_actions_given_stimuli(mice_actionscount_to_stimulus, units='steps'):
-    # normalize over the actions (last axis i.e. 3) to get probabilities
-    # add a small amount to denominator to avoid divide by zero!
+    # normalize over the actions (last axis i.e. -1) to get probabilities
+    # do not add a small amount to denominator to avoid divide by zero!
+    # allowing nan so that irrelvant time steps are not plotted
     mice_probability_action_given_stimulus = mice_actionscount_to_stimulus \
-                / ( np.sum(mice_actionscount_to_stimulus,axis=3)[:,:,:,np.newaxis] \
-                        + np.finfo(np.double).eps )
+                / np.sum(mice_actionscount_to_stimulus,axis=-1)[:,:,:,np.newaxis] #\
+                        #+ np.finfo(np.double).eps )
     mean_probability_action_given_stimulus = np.sum(mice_actionscount_to_stimulus,axis=0) \
-                / ( np.sum(mice_actionscount_to_stimulus,axis=(0,3))[:,:,np.newaxis] \
-                        + np.finfo(np.double).eps )    
+                / np.sum(mice_actionscount_to_stimulus,axis=(0,-1))[:,:,np.newaxis] #\
+                        #+ np.finfo(np.double).eps )    
+
+    window = mice_actionscount_to_stimulus.shape[2]
+    xvec = range(-window//2+1,window//2+1)
     fig, axes = plt.subplots(2, 3)
     for stimulus_number in range(6):
         row = stimulus_number//3
         col = stimulus_number%3
         for mouse_number in range(number_of_mice):
-            axes[row,col].plot(mice_probability_action_given_stimulus\
+            axes[row,col].plot(xvec, mice_probability_action_given_stimulus\
                                     [mouse_number,stimulus_number,:,0],',-',color=(1,0,0,0.25))
-            axes[row,col].plot(mice_probability_action_given_stimulus\
+            axes[row,col].plot(xvec, mice_probability_action_given_stimulus\
                                     [mouse_number,stimulus_number,:,1],',-',color=(0,0,1,0.25))
-        axes[row,col].plot(mean_probability_action_given_stimulus\
-                                    [stimulus_number,:,0],',-r')
-        axes[row,col].plot(mean_probability_action_given_stimulus\
-                                    [stimulus_number,:,1],',-b')
-        axes[row,col].plot([transition_index,transition_index],[0,1],',-g')
+        axes[row,col].plot(xvec, mean_probability_action_given_stimulus\
+                                    [stimulus_number,:,0],',-r',label='nolick')
+        axes[row,col].plot(xvec, mean_probability_action_given_stimulus\
+                                    [stimulus_number,:,1],',-b',label='lick')
+        axes[row,col].plot([0,0],[0,1],',-g')
         axes[row,col].set_xlabel(units+' around O2V transition')
         axes[row,col].set_ylabel('P(action|stimulus='+str(stimulus_number+1)+')')
+        axes[row,col].set_xlim([-window//2+1,window//2+1])
+    axes[row,col].legend()
     fig.subplots_adjust(wspace=0.5,hspace=0.5)
 
 if __name__ == "__main__":

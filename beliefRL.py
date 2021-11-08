@@ -47,6 +47,8 @@ exploration_decay_time_steps = 100000
 # learning only occurs till this time step
 learning_time_steps = exploration_decay_time_steps
 
+#
+
 # context switching rate 
 # this rate is applicable after both contextual tasks are learned,
 #  but currently, we don't incorporate context learning,
@@ -165,8 +167,7 @@ def beliefRL(belief_switching_rate):
         #  so no need to filter out blanks similar to end_observation
         if t>learning_time_steps and previous_observation!=end_observation:
             reward_vector_exp_compare[exp_step] = reward
-            # note that block number changes on the end time step of a trial,
-            #  so use detected transition_index+1 to get actual transition_index!
+            # note that block number changes on the first time step of a new trial,
             block_vector_exp_compare[exp_step] = info['block']
             # HARDCODED for no-blanks environment: observation numbers to stimulus numbers mapping
             # stimuli are: 1 rewarded visual, 2 unrewarded visual, 3 irrelevant 'rewarded' visual,
@@ -176,6 +177,7 @@ def beliefRL(belief_switching_rate):
                 stimulus_vector_exp_compare[exp_step] = previous_observation+1 # 0 and 1 mapped to 1 and 2
             else: # olfactory block
                 stimulus_vector_exp_compare[exp_step] = previous_observation+3 # 0 to 3 mapped to 3 to 6
+            # this is the action to the previous_observation
             action_vector_exp_compare[exp_step] = action
 
             # increment the running index of the saved vectors
@@ -261,12 +263,10 @@ def beliefRL(belief_switching_rate):
     # clip vector at exp_step, to avoid detecting a last spurious transtion in block_vector_exp_compare
     olfactory_to_visual_transitions = \
         np.where(np.diff(block_vector_exp_compare[:exp_step])==-1)[0]
-    # note that block number changes on the end time step of a trial,
-    #  so use detected transition_index+1 to get actual transition_index!
-    olfactory_to_visual_transitions += 1
+    # note that block number changes on the first time step of a new trial,
     print("o2v transition at steps ",olfactory_to_visual_transitions)
     average_reward_around_o2v_transition = np.zeros(half_window*2)
-    average_action_to_stimulus = np.zeros((6,half_window*2,2)) # 6 stimuli, 2 actions
+    actionscount_to_stimulus = np.zeros((6,half_window*2,2)) # 6 stimuli, 2 actions
     num_transitions_averaged = 0
     for transition in olfactory_to_visual_transitions:
         # take edge effects into account when taking a window around transition
@@ -285,25 +285,49 @@ def beliefRL(belief_switching_rate):
             # stimuli are saved in experiment as 1 to 6
             # since not all time steps will have a particular stimulus,
             #  I encode lick as 1, no lick (with stimulus) as -1, and no stimulus as 0 
-            average_action_to_stimulus[stimulus_number-1,window_start:window_end,0] -= \
+            actionscount_to_stimulus[stimulus_number-1,window_start:window_end,0] += \
                    (stimulus_vector_exp_compare[window_min:window_max]==stimulus_number) \
                             & (action_vector_exp_compare[window_min:window_max]==0)
-            average_action_to_stimulus[stimulus_number-1,window_start:window_end,1] += \
+            actionscount_to_stimulus[stimulus_number-1,window_start:window_end,1] += \
                    (stimulus_vector_exp_compare[window_min:window_max]==stimulus_number) \
                             & (action_vector_exp_compare[window_min:window_max]==1)
+            print(transition,stimulus_number,stimulus_vector_exp_compare[transition-1:transition+1])
 
         num_transitions_averaged += 1
     average_reward_around_o2v_transition /= num_transitions_averaged
-    average_action_to_stimulus /= num_transitions_averaged
 
     #print(value_vector)
     #print(Q_array)
 
-    return average_reward_around_o2v_transition, average_action_to_stimulus
+    return average_reward_around_o2v_transition, actionscount_to_stimulus
+
+def plot_prob_actions_given_stimuli(actionscount_to_stimulus, units='steps'):
+    # normalize over the actions (last axis i.e. -1) to get probabilities
+    # do not add a small amount to denominator to avoid divide by zero!
+    # allowing nan so that irrelvant time steps are not plotted
+    probability_action_given_stimulus = actionscount_to_stimulus \
+                / np.sum(actionscount_to_stimulus,axis=-1)[:,:,np.newaxis] #\
+                        #+ np.finfo(np.double).eps )
+
+    xvec = range(-half_window,half_window)
+    fig, axes = plt.subplots(2, 3)
+    for stimulus_number in range(6):
+        row = stimulus_number//3
+        col = stimulus_number%3
+        axes[row,col].plot(xvec, probability_action_given_stimulus\
+                                    [stimulus_number,:,0],',-r',label='nolick')
+        axes[row,col].plot(xvec, probability_action_given_stimulus\
+                                    [stimulus_number,:,1],',-b',label='lick')
+        axes[row,col].plot([0,0],[0,1],',-g')
+        axes[row,col].set_xlabel(units+' around O2V transition')
+        axes[row,col].set_ylabel('P(action|stimulus='+str(stimulus_number+1)+')')
+        axes[row,col].set_xlim([-half_window,half_window])
+    axes[row,col].legend()
+    fig.subplots_adjust(wspace=0.5,hspace=0.5)
 
 if __name__ == "__main__":
     # call the task function and obtain the mean reward and action given stimulus around transition
-    average_reward_around_o2v_transition, average_action_to_stimulus = beliefRL(belief_switching_rate)
+    average_reward_around_o2v_transition, actionscount_to_stimulus = beliefRL(belief_switching_rate)
 
     #fig1 = plt.figure()
     #plt.plot(reward_vec)
@@ -322,17 +346,6 @@ if __name__ == "__main__":
     plt.xlabel('time steps around olfactory to visual transition')
     plt.ylabel('average reward on time step')
 
-    fig4, axes = plt.subplots(2, 3)
-    for stimulus_index in range(6):
-        row = stimulus_index//3
-        col = stimulus_index%3
-        axes[row,col].plot(average_action_to_stimulus[stimulus_index,:,0],',-r')
-        axes[row,col].plot(average_action_to_stimulus[stimulus_index,:,1],',-b')
-        axes[row,col].plot([half_window,half_window],\
-                [np.min(average_action_to_stimulus),\
-                    np.max(average_action_to_stimulus)],',-g')
-        axes[row,col].set_xlabel('steps at O2V transition')
-        axes[row,col].set_ylabel('average action on stimulus '+str(stimulus_index+1))
-    fig4.subplots_adjust(wspace=0.5,hspace=0.5)
+    plot_prob_actions_given_stimuli(actionscount_to_stimulus)
 
     plt.show()

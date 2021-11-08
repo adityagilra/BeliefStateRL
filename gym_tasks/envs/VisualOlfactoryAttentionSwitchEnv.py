@@ -164,15 +164,6 @@ class VisualOlfactoryAttentionSwitchEnv(Env):
     def step(self, action):
         assert self.action_space.contains(action)
 
-        # switch block after 20 consecutive correct
-        #  and at least 30 trials in this block after shaping trials
-        if self.consecutive_correct_number >= 20 \
-                and self.trial_number_in_block >= 30:
-            self.block_number = 1 - self.block_number
-            self.consecutive_correct_number = 0
-            self.trial_number_in_block = 0
-            self.shaping_trials_correct = 0
-
         self.time_index += 1
         
         # if the last trial had finished, start a new trial
@@ -182,6 +173,15 @@ class VisualOlfactoryAttentionSwitchEnv(Env):
             if self.shaping_trials_correct >= 3:
                 self.trial_number_in_block += 1
             self.time_index = 0
+
+        # switch block after 20 consecutive correct
+        #  and at least 30 trials in this block after shaping trials
+        if self.consecutive_correct_number >= 20 \
+                and self.trial_number_in_block >= 30:
+            self.block_number = 1 - self.block_number
+            self.consecutive_correct_number = 0
+            self.trial_number_in_block = 0
+            self.shaping_trials_correct = 0
 
         # set default variables, unless changed in _step()
         self.reward = 0
