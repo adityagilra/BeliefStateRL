@@ -23,8 +23,9 @@ Block Olfactory:
 After any block transition, shaping trials are given,
  where always a rewarded visual stimulus is shown in both blocks,
   until the mouse gets 3 correct responses i.e. lick in visual block, no lick in olfactory block.
-We transition to the other block after 20 consecutively correct trials,
- but there should be at least 30 trials after initial shaping trials after a block transition.
+We transition to the other block after at least 80% correct in past 30 trials,
+ and 100% correct in ignoring past 10 irrelevant visual stimuli,
+ and there should be at least 30 trials after initial shaping trials after a block transition.
 A lick for cue 1 or a no lick for cue 2 in the final reward step counts as correct response.
 No lick in all other time steps in these trials is also required.
 
@@ -66,7 +67,8 @@ class VisualOlfactoryAttentionSwitchEnv(Env):
         self.observation_number = None
         self.last_action = None
         self.reward = None
-        self.consecutive_correct_number = None
+        self.correct_minus_wrong = None
+        self.consecutive_ignore_irrelevant_visual = None
 
         self.time_index = None
         self.trial_number = None
@@ -90,7 +92,8 @@ class VisualOlfactoryAttentionSwitchEnv(Env):
         self.target_action_number = 0
         self.last_action = None
         self.reward = 0
-        self.consecutive_correct_number = 0
+        self.correct_minus_wrong = 0
+        self.consecutive_ignore_irrelevant_visual = 0
 
         self.trial_number = 0
         self.trial_number_in_block = 0
@@ -110,20 +113,20 @@ class VisualOlfactoryAttentionSwitchEnv(Env):
             if action == 1: # lick
                 # give reward
                 self.reward = self.reward_size
-                self.consecutive_correct_number += 1
+                self.correct_minus_wrong += 1
             else: # no lick
-                # no punishment, restart count of consecutive correct responses
+                # no punishment, reduce count of correct responses
                 #self.reward = -self.punish_factor*self.reward_size
-                self.consecutive_correct_number = 0
+                self.correct_minus_wrong -= 1
 
         if self.observation_number == target_observation_number+1:
             if action == 0: # no lick
                 # no reward, but counted as a correct trial
-                self.consecutive_correct_number += 1
+                self.correct_minus_wrong += 1
             else: # lick
-                # give punishment, restart count of consecutive correct responses
+                # give punishment, reduce count of correct responses
                 self.reward = -self.punish_factor*self.reward_size
-                self.consecutive_correct_number = 0
+                self.correct_minus_wrong -= 1
 
         # check responses to shaping trials in visual block
         if self.block_number == 0 and self.shaping_trials_correct < 3:
@@ -139,32 +142,46 @@ class VisualOlfactoryAttentionSwitchEnv(Env):
         self.done_trial = True        
         # end state is shown here
         self.observation_number = self.end_of_trial_observation_number
+        # debug print
+        #print(self.block_number,self.trial_number_in_block,
+        #        self.consecutive_ignore_irrelevant_visual,
+        #        self.correct_minus_wrong,self.shaping_trials_correct)
 
     def _needless_lick(self, action):
         # licking to end or blank stimulus is wasteful,
         #  so mild punishment, equivalent to waste of energy by mouse
         if action == 1:
             self.reward = -self.lick_without_reward_factor*self.reward_size
-            self.consecutive_correct_number = 0 # check if same as experiment?
+            #self.correct_minus_wrong -= 1 # to confirm that experiment doesn't reduce score here
 
     def _needless_lick_to_visual_in_olfactory_block(self, action):
         if action == 1:
             # licking to visual stimulus in olfactory block is wasteful
             #  so mild punishment, equivalent to waste of energy by mouse
             self.reward = -self.lick_without_reward_factor*self.reward_size
-            self.consecutive_correct_number = 0
+            self.consecutive_ignore_irrelevant_visual = 0
             # once 3 correct shaping trials are done,
             #  don't set shaping_trials_correct back to 0, even for needless lick
+            # but if 3 correct shaping trials are not done,
+            #  then set shaping_trials_correct back to 0, until they are done
             if self.shaping_trials_correct < 3:
                 self.shaping_trials_correct = 0
         else:
             # need 3 ignores to 'rewarded visual stimulus' at start of an olfactory block
             self.shaping_trials_correct += 1
+            # need 10 consecutive ignores to both visual stimuli before O2V transition
+            self.consecutive_ignore_irrelevant_visual += 1
 
     def step(self, action):
         assert self.action_space.contains(action)
 
         self.time_index += 1
+        
+        # debug print
+        #print(self.block_number,self.trial_number_in_block,
+        #        self.consecutive_ignore_irrelevant_visual,
+        #        self.correct_minus_wrong,self.shaping_trials_correct,
+        #        self.time_index, self.done_trial)
         
         # if the last trial had finished, start a new trial
         if self.done_trial:
@@ -174,14 +191,26 @@ class VisualOlfactoryAttentionSwitchEnv(Env):
                 self.trial_number_in_block += 1
             self.time_index = 0
 
-        # switch block after 20 consecutive correct
-        #  and at least 30 trials in this block after shaping trials
-        if self.consecutive_correct_number >= 20 \
-                and self.trial_number_in_block >= 30:
-            self.block_number = 1 - self.block_number
-            self.consecutive_correct_number = 0
-            self.trial_number_in_block = 0
-            self.shaping_trials_correct = 0
+            # within `if self.done_trial:`
+            #  as we should only switch block at end of a trial,
+            #  else may switch on reaching 10 consecutive ignore visuals,
+            #  having reached other criteria earlier!
+            # switch block after 80% consecutive correct in past 30 trials (0.8*30=24)
+            #  and at least 30 trials in this block after shaping trials
+            #  and if olfactory block, at least 10 consecutive ignore visuals
+            if (self.block_number == 0 \
+                    and self.correct_minus_wrong >= 24 \
+                    and self.trial_number_in_block >= 30) \
+                or \
+                (self.block_number == 1 \
+                    and self.correct_minus_wrong >= 24 \
+                    and self.trial_number_in_block >= 30 \
+                    and self.consecutive_ignore_irrelevant_visual >= 10):
+                self.block_number = 1 - self.block_number
+                self.correct_minus_wrong = 0
+                self.consecutive_ignore_irrelevant_visual = 0
+                self.trial_number_in_block = 0
+                self.shaping_trials_correct = 0
 
         # set default variables, unless changed in _step()
         self.reward = 0

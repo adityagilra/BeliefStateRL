@@ -25,8 +25,9 @@ Block Olfactory:
 After any block transition, shaping trials are given,
  where always a rewarded visual stimulus is shown in both blocks,
   until the mouse gets 3 correct responses i.e. lick in visual block, no lick in olfactory block.
-We transition to the other block after 20 consecutively correct trials,
- but there should be at least 30 trials after initial shaping trials after a block transition.
+We transition to the other block after at least 80% correct in past 30 trials,
+ and 100% correct in ignoring past 10 irrelevant visual stimuli,
+ and there should be at least 30 trials after initial shaping trials after a block transition.
 A lick for cue 1 or a no lick for cue 2 in the final reward step counts as correct response.
 No lick in all other time steps in these trials is also required.
 

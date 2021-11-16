@@ -257,18 +257,32 @@ def beliefRL(belief_switching_rate):
         previous_observation = observation
         previous_state = state
 
-    ################# processing after agent simulation has ended
-    ################# calculate mean reward and mean action given stimulus, around transitions
+    #print(value_vector)
+    #print(Q_array)
+
+    return exp_step, block_vector_exp_compare, reward_vector_exp_compare, \
+                stimulus_vector_exp_compare, action_vector_exp_compare
+
+def process_transitions(O2V=True):
+    # assume that variables:
+    #  exp_step, block_vector_exp_compare,
+    #  reward_vector_exp_compare, action_vector_exp_compare
+    # are available in the global workspace
+    # since they are not modified here, only analysed, no need to pass them in!
+
     # exp_step, at end of time loop above, equals end index saved in _exp_compare vectors
     # clip vector at exp_step, to avoid detecting a last spurious transtion in block_vector_exp_compare
-    olfactory_to_visual_transitions = \
+
+    # processing after agent simulation has ended
+    # calculate mean reward and mean action given stimulus, around transitions
+    transitions = \
         np.where(np.diff(block_vector_exp_compare[:exp_step])==-1)[0]
     # note that block number changes on the first time step of a new trial,
-    print("o2v transition at steps ",olfactory_to_visual_transitions)
-    average_reward_around_o2v_transition = np.zeros(half_window*2)
+    print(('O2V' if O2V else 'V2O')+" transition at steps ",transitions)
+    average_reward_around_transition = np.zeros(half_window*2)
     actionscount_to_stimulus = np.zeros((6,half_window*2,2)) # 6 stimuli, 2 actions
     num_transitions_averaged = 0
-    for transition in olfactory_to_visual_transitions:
+    for transition in transitions:
         # take edge effects into account when taking a window around transition
         # i.e. don't go beyond the end and start of saved data if transition is close to an edge
         window_min = max((0,transition-half_window))
@@ -276,7 +290,7 @@ def beliefRL(belief_switching_rate):
         window_max = min((transition+half_window,exp_step))
         window_start = window_min-transition+half_window
         window_end = half_window+window_max-transition
-        average_reward_around_o2v_transition[window_start:window_end] \
+        average_reward_around_transition[window_start:window_end] \
                 += reward_vector_exp_compare[window_min:window_max]
 
         ######### actions given stimuli around transition
@@ -291,15 +305,13 @@ def beliefRL(belief_switching_rate):
             actionscount_to_stimulus[stimulus_number-1,window_start:window_end,1] += \
                    (stimulus_vector_exp_compare[window_min:window_max]==stimulus_number) \
                             & (action_vector_exp_compare[window_min:window_max]==1)
-            print(transition,stimulus_number,stimulus_vector_exp_compare[transition-1:transition+1])
+            # debug print
+            #print(transition,stimulus_number,stimulus_vector_exp_compare[transition-1:transition+1])
 
         num_transitions_averaged += 1
-    average_reward_around_o2v_transition /= num_transitions_averaged
+    average_reward_around_transition /= num_transitions_averaged
 
-    #print(value_vector)
-    #print(Q_array)
-
-    return average_reward_around_o2v_transition, actionscount_to_stimulus
+    return average_reward_around_transition, actionscount_to_stimulus
 
 def plot_prob_actions_given_stimuli(actionscount_to_stimulus, units='steps'):
     # normalize over the actions (last axis i.e. -1) to get probabilities
@@ -326,8 +338,15 @@ def plot_prob_actions_given_stimuli(actionscount_to_stimulus, units='steps'):
     fig.subplots_adjust(wspace=0.5,hspace=0.5)
 
 if __name__ == "__main__":
-    # call the task function and obtain the mean reward and action given stimulus around transition
-    average_reward_around_o2v_transition, actionscount_to_stimulus = beliefRL(belief_switching_rate)
+    # simulate the RL agent on the task
+    exp_step, block_vector_exp_compare, \
+        reward_vector_exp_compare, stimulus_vector_exp_compare, \
+            action_vector_exp_compare = \
+                beliefRL(belief_switching_rate)
+    # obtain the mean reward and action given stimulus around O2V transition
+    # no need to pass above variables as they are not modified, only analysed
+    average_reward_around_o2v_transition, actionscount_to_stimulus = \
+        process_transitions(O2V = True)
 
     #fig1 = plt.figure()
     #plt.plot(reward_vec)
