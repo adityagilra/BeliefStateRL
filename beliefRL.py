@@ -276,7 +276,7 @@ def process_transitions(O2V=True):
     # processing after agent simulation has ended
     # calculate mean reward and mean action given stimulus, around transitions
     transitions = \
-        np.where(np.diff(block_vector_exp_compare[:exp_step])==-1)[0]
+        np.where(np.diff(block_vector_exp_compare[:exp_step])==(-1 if O2V else 1))[0]
     # note that block number changes on the first time step of a new trial,
     print(('O2V' if O2V else 'V2O')+" transition at steps ",transitions)
     average_reward_around_transition = np.zeros(half_window*2)
@@ -313,7 +313,7 @@ def process_transitions(O2V=True):
 
     return average_reward_around_transition, actionscount_to_stimulus
 
-def plot_prob_actions_given_stimuli(actionscount_to_stimulus, units='steps'):
+def plot_prob_actions_given_stimuli(actionscount_to_stimulus, units='steps', trans='O2V'):
     # normalize over the actions (last axis i.e. -1) to get probabilities
     # do not add a small amount to denominator to avoid divide by zero!
     # allowing nan so that irrelvant time steps are not plotted
@@ -322,20 +322,37 @@ def plot_prob_actions_given_stimuli(actionscount_to_stimulus, units='steps'):
                         #+ np.finfo(np.double).eps )
 
     xvec = range(-half_window,half_window)
-    fig, axes = plt.subplots(2, 3)
-    for stimulus_number in range(6):
-        row = stimulus_number//3
-        col = stimulus_number%3
+    fig, axes = plt.subplots(2,3)
+    figall, axall = plt.subplots(1,1)
+    #figall = plt.figure()
+    #axall = figall.add_axes([0.1, 0.1, 0.9, 0.9])
+    colors = ['r','g','y','c','b','m']
+    labels = ['+v','-v','/+v','/-v','+o','-o']
+    for stimulus_index in range(6):
+        row = stimulus_index//3
+        col = stimulus_index%3
         axes[row,col].plot(xvec, probability_action_given_stimulus\
-                                    [stimulus_number,:,0],',-r',label='nolick')
+                                    [stimulus_index,:,0],',-r',label='nolick')
         axes[row,col].plot(xvec, probability_action_given_stimulus\
-                                    [stimulus_number,:,1],',-b',label='lick')
+                                    [stimulus_index,:,1],',-b',label='lick')
         axes[row,col].plot([0,0],[0,1],',-g')
-        axes[row,col].set_xlabel(units+' around O2V transition')
-        axes[row,col].set_ylabel('P(action|stimulus='+str(stimulus_number+1)+')')
+        axes[row,col].set_xlabel(units+' around '+trans+' transition')
+        axes[row,col].set_ylabel('P(action|stimulus='+str(stimulus_index+1)+')')
         axes[row,col].set_xlim([-half_window,half_window])
+
+        # lick probability given stimuli all in one axes
+        axall.plot(xvec,probability_action_given_stimulus\
+                            [stimulus_index,:,1],color=colors[stimulus_index],
+                            label=labels[stimulus_index])
+        axall.plot([0,0],[0,1],',-k')
+        axall.set_xlabel(units+' around '+trans+' transition')
+        axall.set_ylabel('P(lick|stimulus)')
+        axall.set_xlim([-half_window,half_window])
+
     axes[row,col].legend()
     fig.subplots_adjust(wspace=0.5,hspace=0.5)
+    axall.legend()
+    figall.tight_layout()
 
 if __name__ == "__main__":
     # simulate the RL agent on the task
@@ -348,6 +365,7 @@ if __name__ == "__main__":
     average_reward_around_o2v_transition, actionscount_to_stimulus = \
         process_transitions(O2V = True)
 
+    ## obsolete - start
     #fig1 = plt.figure()
     #plt.plot(reward_vec)
     #smooth = 20 # time steps to smooth over
@@ -356,6 +374,7 @@ if __name__ == "__main__":
 
     #fig2 = plt.figure()
     #plt.plot(cumulative_reward)
+    ## obsolete - end
 
     fig3 = plt.figure()
     plt.plot(average_reward_around_o2v_transition)
@@ -366,5 +385,12 @@ if __name__ == "__main__":
     plt.ylabel('average reward on time step')
 
     plot_prob_actions_given_stimuli(actionscount_to_stimulus)
+
+    # obtain the mean reward and action given stimulus around V2O transition
+    # no need to pass above variables as they are not modified, only analysed
+    average_reward_around_o2v_transition, actionscount_to_stimulus = \
+        process_transitions(O2V = False)
+
+    plot_prob_actions_given_stimuli(actionscount_to_stimulus, trans='V2O')
 
     plt.show()

@@ -182,8 +182,9 @@ def plot_prob_actions_given_stimuli(mice_actionscount_to_stimulus, units='steps'
     window = mice_actionscount_to_stimulus.shape[2]
     xvec = range(-window//2+1,window//2+1)
     fig, axes = plt.subplots(2, 3)
-    figall = plt.figure()
-    axall = figall.add_axes([0.1, 0.1, 0.9, 0.9])
+    figall, axall = plt.subplots(1,1)
+    #figall = plt.figure()
+    #axall = figall.add_axes([0.1, 0.1, 0.9, 0.9])
     colors = ['r','g','y','c','b','m']
     labels = ['+v','-v','/+v','/-v','+o','-o']
     for stimulus_index in range(6):
@@ -203,13 +204,13 @@ def plot_prob_actions_given_stimuli(mice_actionscount_to_stimulus, units='steps'
         axes[row,col].set_ylabel('P(action|stimulus='+str(stimulus_index+1)+')')
         axes[row,col].set_xlim([-window//2+1,window//2+1])
         
-        # lick probability
+        # lick probability given stimuli all in one axes
         axall.plot(xvec,mean_probability_action_given_stimulus\
                             [stimulus_index,:,1],color=colors[stimulus_index],
                             label=labels[stimulus_index])
         axall.plot([-1,-1],[0,1],',-k')
         axall.set_xlabel(units+' around '+trans+' transition')
-        axall.set_ylabel('P(lick|stimulus')
+        axall.set_ylabel('P(lick|stimulus)')
         axall.set_xlim([-window//2+1,window//2+1])
 
     axes[row,col].legend()
