@@ -32,7 +32,7 @@ policy = 1 # epsilon-greedy
 
 
 # you need around 1,000,000 steps for enough transitions to average over
-steps = 500000
+steps = 200000
 
 alpha = 0.1 # TD learning rate
 
@@ -276,7 +276,7 @@ def process_transitions(O2V=True):
     # processing after agent simulation has ended
     # calculate mean reward and mean action given stimulus, around transitions
     transitions = \
-        np.where(np.diff(block_vector_exp_compare[:exp_step])==(-1 if O2V else 1))[0]
+        np.where(np.diff(block_vector_exp_compare[:exp_step])==(-1 if O2V else 1))[0] + 1
     # note that block number changes on the first time step of a new trial,
     print(('O2V' if O2V else 'V2O')+" transition at steps ",transitions)
     average_reward_around_transition = np.zeros(half_window*2)
@@ -288,10 +288,15 @@ def process_transitions(O2V=True):
         window_min = max((0,transition-half_window))
         # exp_step, at end of time loop above, equals end index saved in _exp_compare vectors
         window_max = min((transition+half_window,exp_step))
-        window_start = window_min-transition+half_window
-        window_end = half_window+window_max-transition
+        window_start = window_min-(transition-half_window)
+        window_end = window_max-(transition-half_window)
         average_reward_around_transition[window_start:window_end] \
                 += reward_vector_exp_compare[window_min:window_max]
+
+        # debug print
+        #print(('O2V' if O2V else 'V2O'), transition,
+        #        stimulus_vector_exp_compare[transition-5:transition+5],
+        #        action_vector_exp_compare[transition-5:transition+5])
 
         ######### actions given stimuli around transition
         for stimulus_number in range(1,7):
@@ -305,8 +310,11 @@ def process_transitions(O2V=True):
             actionscount_to_stimulus[stimulus_number-1,window_start:window_end,1] += \
                    (stimulus_vector_exp_compare[window_min:window_max]==stimulus_number) \
                             & (action_vector_exp_compare[window_min:window_max]==1)
+
             # debug print
-            #print(transition,stimulus_number,stimulus_vector_exp_compare[transition-1:transition+1])
+            #print(stimulus_number,
+            #        actionscount_to_stimulus[stimulus_number-1,half_window-5:half_window+5,0],
+            #        actionscount_to_stimulus[stimulus_number-1,half_window-5:half_window+5,1])
 
         num_transitions_averaged += 1
     average_reward_around_transition /= num_transitions_averaged
@@ -321,30 +329,37 @@ def plot_prob_actions_given_stimuli(actionscount_to_stimulus, units='steps', tra
                 / np.sum(actionscount_to_stimulus,axis=-1)[:,:,np.newaxis] #\
                         #+ np.finfo(np.double).eps )
 
+    # debug print
+    #for stimulus_index in range(6):
+    #    print(stimulus_index+1,probability_action_given_stimulus[stimulus_index,half_window-5:half_window+5,1])
+    #    print(stimulus_index+1,actionscount_to_stimulus[stimulus_index,half_window-5:half_window+5,1],
+    #            np.sum(actionscount_to_stimulus[stimulus_index,half_window-5:half_window+5,:],axis=-1))
+
     xvec = range(-half_window,half_window)
     fig, axes = plt.subplots(2,3)
     figall, axall = plt.subplots(1,1)
     #figall = plt.figure()
     #axall = figall.add_axes([0.1, 0.1, 0.9, 0.9])
+    axall.plot([0,0],[0,1],',k',linestyle='--')
     colors = ['r','g','y','c','b','m']
     labels = ['+v','-v','/+v','/-v','+o','-o']
     for stimulus_index in range(6):
         row = stimulus_index//3
         col = stimulus_index%3
-        axes[row,col].plot(xvec, probability_action_given_stimulus\
-                                    [stimulus_index,:,0],',-r',label='nolick')
-        axes[row,col].plot(xvec, probability_action_given_stimulus\
-                                    [stimulus_index,:,1],',-b',label='lick')
         axes[row,col].plot([0,0],[0,1],',-g')
+        axes[row,col].plot(xvec, probability_action_given_stimulus\
+                                    [stimulus_index,:,0],'.-r',label='nolick')
+        axes[row,col].plot(xvec, probability_action_given_stimulus\
+                                    [stimulus_index,:,1],'.-b',label='lick')
         axes[row,col].set_xlabel(units+' around '+trans+' transition')
         axes[row,col].set_ylabel('P(action|stimulus='+str(stimulus_index+1)+')')
         axes[row,col].set_xlim([-half_window,half_window])
 
         # lick probability given stimuli all in one axes
         axall.plot(xvec,probability_action_given_stimulus\
-                            [stimulus_index,:,1],color=colors[stimulus_index],
+                            [stimulus_index,:,1], marker='.',
+                            color=colors[stimulus_index],
                             label=labels[stimulus_index])
-        axall.plot([0,0],[0,1],',-k')
         axall.set_xlabel(units+' around '+trans+' transition')
         axall.set_ylabel('P(lick|stimulus)')
         axall.set_xlim([-half_window,half_window])

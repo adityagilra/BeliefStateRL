@@ -185,30 +185,31 @@ def plot_prob_actions_given_stimuli(mice_actionscount_to_stimulus, units='steps'
     figall, axall = plt.subplots(1,1)
     #figall = plt.figure()
     #axall = figall.add_axes([0.1, 0.1, 0.9, 0.9])
+    axall.plot([0,0],[0,1],',k',linestyle='--')
     colors = ['r','g','y','c','b','m']
     labels = ['+v','-v','/+v','/-v','+o','-o']
     for stimulus_index in range(6):
         row = stimulus_index//3
         col = stimulus_index%3
+        axes[row,col].plot([0,0],[0,1],',-g')
         for mouse_number in range(number_of_mice):
             axes[row,col].plot(xvec, mice_probability_action_given_stimulus\
-                                    [mouse_number,stimulus_index,:,0],',-',color=(1,0,0,0.25))
+                                    [mouse_number,stimulus_index,:,0],'.-',color=(1,0,0,0.25))
             axes[row,col].plot(xvec, mice_probability_action_given_stimulus\
-                                    [mouse_number,stimulus_index,:,1],',-',color=(0,0,1,0.25))
+                                    [mouse_number,stimulus_index,:,1],'.-',color=(0,0,1,0.25))
         axes[row,col].plot(xvec, mean_probability_action_given_stimulus\
-                                    [stimulus_index,:,0],',-r',label='nolick')
+                                    [stimulus_index,:,0],'.-r',label='nolick')
         axes[row,col].plot(xvec, mean_probability_action_given_stimulus\
-                                    [stimulus_index,:,1],',-b',label='lick')
-        axes[row,col].plot([-1,-1],[0,1],',-g')
+                                    [stimulus_index,:,1],'.-b',label='lick')
         axes[row,col].set_xlabel(units+' around '+trans+' transition')
         axes[row,col].set_ylabel('P(action|stimulus='+str(stimulus_index+1)+')')
         axes[row,col].set_xlim([-window//2+1,window//2+1])
         
         # lick probability given stimuli all in one axes
         axall.plot(xvec,mean_probability_action_given_stimulus\
-                            [stimulus_index,:,1],color=colors[stimulus_index],
+                            [stimulus_index,:,1], marker='.',
+                            color=colors[stimulus_index],
                             label=labels[stimulus_index])
-        axall.plot([-1,-1],[0,1],',-k')
         axall.set_xlabel(units+' around '+trans+' transition')
         axall.set_ylabel('P(lick|stimulus)')
         axall.set_xlim([-window//2+1,window//2+1])
