@@ -1,7 +1,7 @@
 """
-Context-belief-based agent
+Context-belief- and/or history-based agent
 
-by Aditya Gilra, Sep-Oct 2021
+by Aditya Gilra, Sep-Oct-Nov 2021
 """
 
 import gym
@@ -358,7 +358,8 @@ def process_transitions(O2V=True):
 
     return average_reward_around_transition, actionscount_to_stimulus
 
-def plot_prob_actions_given_stimuli(actionscount_to_stimulus, units='steps', trans='O2V'):
+def plot_prob_actions_given_stimuli(actionscount_to_stimulus, detailed_plots, 
+                                        units='steps', trans='O2V'):
     # normalize over the actions (last axis i.e. -1) to get probabilities
     # do not add a small amount to denominator to avoid divide by zero!
     # allowing nan so that irrelvant time steps are not plotted
@@ -378,24 +379,27 @@ def plot_prob_actions_given_stimuli(actionscount_to_stimulus, units='steps', tra
     #                [stimulus_index,half_window-5:half_window+5,:],axis=-1))
 
     xvec = range(-half_window,half_window)
-    fig, axes = plt.subplots(2,3)
+    if detailed_plots:
+        fig, axes = plt.subplots(2,3)
     figall, axall = plt.subplots(1,1)
     #figall = plt.figure()
     #axall = figall.add_axes([0.1, 0.1, 0.9, 0.9])
     axall.plot([0,0],[0,1],',k',linestyle='--')
-    colors = ['r','g','y','c','b','m']
+    #colors = ['r','g','y','c','b','m']
+    colors = ['b','r','b','r','g','y']
     labels = ['+v','-v','/+v','/-v','+o','-o']
     for stimulus_index in range(6):
-        row = stimulus_index//3
-        col = stimulus_index%3
-        axes[row,col].plot([0,0],[0,1],',-g')
-        axes[row,col].plot(xvec, probability_action_given_stimulus\
-                                    [stimulus_index,:,0],'.-r',label='nolick')
-        axes[row,col].plot(xvec, probability_action_given_stimulus\
-                                    [stimulus_index,:,1],'.-b',label='lick')
-        axes[row,col].set_xlabel(units+' around '+trans+' transition')
-        axes[row,col].set_ylabel('P(action|stimulus='+str(stimulus_index+1)+')')
-        axes[row,col].set_xlim([-half_window,half_window])
+        if detailed_plots:
+            row = stimulus_index//3
+            col = stimulus_index%3
+            axes[row,col].plot([0,0],[0,1],',-g')
+            axes[row,col].plot(xvec, probability_action_given_stimulus\
+                                        [stimulus_index,:,0],'.-r',label='nolick')
+            axes[row,col].plot(xvec, probability_action_given_stimulus\
+                                        [stimulus_index,:,1],'.-b',label='lick')
+            axes[row,col].set_xlabel(units+' around '+trans+' transition')
+            axes[row,col].set_ylabel('P(action|stimulus='+str(stimulus_index+1)+')')
+            axes[row,col].set_xlim([-half_window,half_window])
 
         # lick probability given stimuli all in one axes
         axall.plot(xvec,probability_action_given_stimulus\
@@ -406,8 +410,9 @@ def plot_prob_actions_given_stimuli(actionscount_to_stimulus, units='steps', tra
         axall.set_ylabel('P(lick|stimulus)')
         axall.set_xlim([-half_window,half_window])
 
-    axes[row,col].legend()
-    fig.subplots_adjust(wspace=0.5,hspace=0.5)
+    if detailed_plots:
+        axes[row,col].legend()
+        fig.subplots_adjust(wspace=0.5,hspace=0.5)
     axall.legend()
     figall.tight_layout()
 
@@ -419,7 +424,8 @@ if __name__ == "__main__":
     #  as I've HARDCODED observations to stimuli encoding
     #env = gym.make('visual_olfactory_attention_switch-v0')
     # HARDCODED these observations to stimuli encoding
-    env = gym.make('visual_olfactory_attention_switch_no_blank-v0')
+    env = gym.make('visual_olfactory_attention_switch_no_blank-v0',
+                    lick_without_reward_factor=1.)
 
     ############# agent instatiation and agent parameters ###########
     # you need around 1,000,000 steps for enough transitions to average over
@@ -432,15 +438,15 @@ if __name__ == "__main__":
 
     # with history=0 and beliefRL=False, need to keep learning always on!
     #steps = 1000000
-    #agent = BeliefHistoryTabularRL(env,history=0,beliefRL=False,
+    #agent = BeliefHistoryTabularRL(env,history=0,alpha=0.1,beliefRL=False,
     #                                learning_time_steps=steps,
     #                                recording_time_steps=steps//2)
 
     # history=1 takes a bit longer to learn than history=2!
-    #steps = 2000000
-    #agent = BeliefHistoryTabularRL(env,history=2,beliefRL=False,
-    #                                learning_time_steps=steps//2,
-    #                                recording_time_steps=steps//2)
+    steps = 2000000
+    agent = BeliefHistoryTabularRL(env,history=2,beliefRL=False,
+                                    learning_time_steps=steps,
+                                    recording_time_steps=steps//2)
 
     # with history=2 and beliefRL=False, no need to keep learning always on!
     #  learning stops after learning_time_steps,
@@ -451,10 +457,10 @@ if __name__ == "__main__":
     #                                recording_time_steps=steps//2)
 
     # no history and just belief in one of two contexts - two Q tables
-    steps = 1000000
-    agent = BeliefHistoryTabularRL(env,history=0,beliefRL=True,
-                                    learning_time_steps=steps//2,
-                                    recording_time_steps=steps//2)
+    #steps = 1000000
+    #agent = BeliefHistoryTabularRL(env,history=0,beliefRL=True,
+    #                                learning_time_steps=steps,
+    #                                recording_time_steps=steps//2)
 
     ############################################################
     
@@ -464,13 +470,7 @@ if __name__ == "__main__":
             action_vector_exp_compare = \
                 agent.train(steps)
 
-    # number of steps on each side of the transition to consider
-    half_window = 30
-
-    # obtain the mean reward and action given stimulus around O2V transition
-    # no need to pass above variables as they are not modified, only analysed
-    average_reward_around_o2v_transition, actionscount_to_stimulus = \
-        process_transitions(O2V = True)
+    detailed_plots = False
 
     ## obsolete - start
     #fig1 = plt.figure()
@@ -483,21 +483,30 @@ if __name__ == "__main__":
     #plt.plot(cumulative_reward)
     ## obsolete - end
 
-    fig3 = plt.figure()
-    plt.plot(average_reward_around_o2v_transition)
-    plt.plot([half_window,half_window],\
-                [min(average_reward_around_o2v_transition),\
-                    max(average_reward_around_o2v_transition)])
-    plt.xlabel('time steps around olfactory to visual transition')
-    plt.ylabel('average reward on time step')
+    # number of steps on each side of the transition to consider
+    half_window = 30
 
-    plot_prob_actions_given_stimuli(actionscount_to_stimulus)
+    # obtain the mean reward and action given stimulus around O2V transition
+    # no need to pass above variables as they are not modified, only analysed
+    average_reward_around_o2v_transition, actionscount_to_stimulus = \
+        process_transitions(O2V = True)
+
+    if detailed_plots:
+        fig3 = plt.figure()
+        plt.plot(average_reward_around_o2v_transition)
+        plt.plot([half_window,half_window],\
+                    [min(average_reward_around_o2v_transition),\
+                        max(average_reward_around_o2v_transition)])
+        plt.xlabel('time steps around olfactory to visual transition')
+        plt.ylabel('average reward on time step')
+
+    plot_prob_actions_given_stimuli(actionscount_to_stimulus, detailed_plots)
 
     # obtain the mean reward and action given stimulus around V2O transition
     # no need to pass above variables as they are not modified, only analysed
     average_reward_around_o2v_transition, actionscount_to_stimulus = \
         process_transitions(O2V = False)
 
-    plot_prob_actions_given_stimuli(actionscount_to_stimulus, trans='V2O')
+    plot_prob_actions_given_stimuli(actionscount_to_stimulus, detailed_plots, trans='V2O')
 
     plt.show()

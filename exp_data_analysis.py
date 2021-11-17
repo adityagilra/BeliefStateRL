@@ -186,7 +186,8 @@ def plot_prob_actions_given_stimuli(mice_actionscount_to_stimulus, units='steps'
     #figall = plt.figure()
     #axall = figall.add_axes([0.1, 0.1, 0.9, 0.9])
     axall.plot([0,0],[0,1],',k',linestyle='--')
-    colors = ['r','g','y','c','b','m']
+    #colors = ['r','g','y','c','b','m']
+    colors = ['b','r','b','r','g','y']
     labels = ['+v','-v','/+v','/-v','+o','-o']
     for stimulus_index in range(6):
         row = stimulus_index//3
