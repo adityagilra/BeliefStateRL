@@ -95,8 +95,8 @@ if __name__ == "__main__":
             get_exp_reward_around_transition(trans='V2O')
     print("finished reading experimental data.")
 
-    agent_type = 'belief'
-    #agent_type = 'simple'
+    #agent_type = 'belief'
+    agent_type = 'basic'
 
     env, agent, steps = get_env_agent(agent_type=agent_type)
 
@@ -106,7 +106,7 @@ if __name__ == "__main__":
         learning_rate_start = 0.1
         parameters = (belief_switching_rate_start,
                         exploration_rate_start, learning_rate_start)
-    elif agent_type == 'simple':
+    elif agent_type == 'basic':
         exploration_rate_start = 0.1
         learning_rate_start = 0.1
         parameters = (exploration_rate_start, learning_rate_start)

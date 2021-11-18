@@ -138,7 +138,7 @@ class BeliefHistoryTabularRL():
                     # agent weights Q values of contexts by current context probabilities
                     pass # to implement
                     if np.random.uniform() < exploration_rate:
-                        action = env.action_space.sample()
+                        action = self.env.action_space.sample()
                     else:
                         # to implement
                         pass
@@ -154,7 +154,7 @@ class BeliefHistoryTabularRL():
             else:
                 context_assumed_now = 0
                 if np.random.uniform() < self.exploration_rate:
-                    action = env.action_space.sample()
+                    action = self.env.action_space.sample()
                 else:
                     action = np.argmax(self.Q_array[self.previous_state][0,:])
                     
