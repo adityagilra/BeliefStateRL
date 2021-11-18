@@ -55,9 +55,15 @@ np.random.seed(1)
 #transition_index = 9
 
 # window of size 61, 30 before and 31 after
+#mouse_behaviour_data = scipyio.loadmat(
+#                    "experiment_data/exported_behavioural_data_Control_vs_ACC_silencing_-30_+30_trials.mat",
+#                                        struct_as_record=True)
+# Nick sent new data confirming a few stimuli were shown not as intended as per task design
+# so he has removed them
 mouse_behaviour_data = scipyio.loadmat(
-                    "experiment_data/exported_behavioural_data_Control_vs_ACC_silencing_-30_+30_trials.mat",
+                    "experiment_data/exported_behavioural_data_Control_vs_ACC_silencing_-30_+30_trials_errors_removed.mat",
                                         struct_as_record=True)
+
 transition_index = 29
 
 # example access:
@@ -82,8 +88,13 @@ def get_exp_reward_around_transition(trans='O2V'):
         # both these numpy arrays of doubles have size T x window,
         #  where T are the number of transitions
         transition_stimuli = behaviour_data[0,mouse_number][0,0]['stimulus']
-        # looks like 'lick' field doesn't contain licks but correct responses!
-        transition_corrects = behaviour_data[0,mouse_number][0,0]['lick']
+        # earlier, 'lick' field didn't contain licks but correct responses!
+        # now, it does, and there's a 'correct' field as well,
+        # but further below, I continue to use corrects and convert corrects to licks
+        #transition_corrects = behaviour_data[0,mouse_number][0,0]['lick']
+        transition_corrects = behaviour_data[0,mouse_number][0,0]['correct']
+        # would have been easier to use but given later, so not used now
+        transition_licks = behaviour_data[0,mouse_number][0,0]['lick']
         
         ######### reward around transition
         # positive reward if mouse licks and rewarded stimulus, else negative reward
@@ -180,6 +191,18 @@ def plot_prob_actions_given_stimuli(mice_actionscount_to_stimulus, units='steps'
                         #+ np.finfo(np.double).eps )    
 
     window = mice_actionscount_to_stimulus.shape[2]
+
+    # debug print
+    #for stimulus_index in range(6):
+    #    print(stimulus_index+1,\
+    #            mean_probability_action_given_stimulus\
+    #                [stimulus_index,window//2-8:window//2+8,1])
+    #    print(stimulus_index+1,
+    #            np.sum(mice_actionscount_to_stimulus,axis=0)\
+    #                [stimulus_index,window//2-8:window//2+8,1],\
+    #            np.sum(mice_actionscount_to_stimulus,axis=(0,-1))\
+    #                [stimulus_index,window//2-8:window//2+8])
+
     xvec = range(-window//2+1,window//2+1)
     fig, axes = plt.subplots(2, 3)
     figall, axall = plt.subplots(1,1)
