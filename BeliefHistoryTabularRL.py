@@ -9,10 +9,14 @@ import numpy as np
 import gym_tasks
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from exp_data_analysis import get_exp_reward_around_transition
 
 # reproducible random number generation
 seed = 1
 np.random.seed(seed)
+
+# number of steps on each side of the transition to consider
+half_window = 30
 
 class BeliefHistoryTabularRL():
     # state is a concatenated string of previous history observations
@@ -144,7 +148,7 @@ class BeliefHistoryTabularRL():
                         np.random.choice( range(self.n_contexts),\
                                             p=self.context_belief_probabilities )
                     if np.random.uniform() < self.exploration_rate:
-                        action = env.action_space.sample()
+                        action = self.env.action_space.sample()
                     else:
                         action = np.argmax(self.Q_array[self.previous_state][context_assumed_now,:])
             else:
@@ -174,7 +178,7 @@ class BeliefHistoryTabularRL():
             self.action, self.context_assumed_now = self.decide_action()
 
             ############### take the action in the environment / task
-            self.observation, self.reward, self.done, self.info = env.step(self.action)
+            self.observation, self.reward, self.done, self.info = self.env.step(self.action)
             #print(observation, reward, done, info)
             #env.render() # prints on sys.stdout
 
@@ -298,13 +302,11 @@ class BeliefHistoryTabularRL():
         return exp_step, block_vector_exp_compare, reward_vector_exp_compare, \
                     stimulus_vector_exp_compare, action_vector_exp_compare
 
-def process_transitions(O2V=True):
-    # assume that variables:
-    #  exp_step, block_vector_exp_compare,
-    #  reward_vector_exp_compare, action_vector_exp_compare
-    # are available in the global workspace
-    # since they are not modified here, only analysed, no need to pass them in!
-
+def process_transitions(exp_step, block_vector_exp_compare,
+                        reward_vector_exp_compare, 
+                        stimulus_vector_exp_compare,
+                        action_vector_exp_compare,
+                        O2V=True):
     # exp_step, at end of time loop above, equals end index saved in _exp_compare vectors
     # clip vector at exp_step, to avoid detecting a last spurious transtion in block_vector_exp_compare
 
@@ -316,15 +318,15 @@ def process_transitions(O2V=True):
     # debug print
     #print(('O2V' if O2V else 'V2O')+" transition at steps ",transitions)
     
-    average_reward_around_transition = np.zeros(half_window*2)
-    actionscount_to_stimulus = np.zeros((6,half_window*2,2)) # 6 stimuli, 2 actions
+    average_reward_around_transition = np.zeros(half_window*2+1)
+    actionscount_to_stimulus = np.zeros((6,half_window*2+1,2)) # 6 stimuli, 2 actions
     num_transitions_averaged = 0
     for transition in transitions:
         # take edge effects into account when taking a window around transition
         # i.e. don't go beyond the start and end of saved data if transition is close to an edge
         window_min = max((0,transition-half_window))
         # exp_step, at end of time loop above, equals end index saved in _exp_compare vectors
-        window_max = min((transition+half_window,exp_step))
+        window_max = min((transition+half_window+1,exp_step))
         window_start = window_min-(transition-half_window)
         window_end = window_max-(transition-half_window)
         average_reward_around_transition[window_start:window_end] \
@@ -356,10 +358,6 @@ def process_transitions(O2V=True):
         num_transitions_averaged += 1
     average_reward_around_transition /= num_transitions_averaged
 
-    return average_reward_around_transition, actionscount_to_stimulus
-
-def plot_prob_actions_given_stimuli(actionscount_to_stimulus, detailed_plots, 
-                                        units='steps', trans='O2V'):
     # normalize over the actions (last axis i.e. -1) to get probabilities
     # do not add a small amount to denominator to avoid divide by zero!
     # allowing nan so that irrelvant time steps are not plotted
@@ -367,6 +365,14 @@ def plot_prob_actions_given_stimuli(actionscount_to_stimulus, detailed_plots,
                 / np.sum(actionscount_to_stimulus,axis=-1)[:,:,np.newaxis] #\
                         #+ np.finfo(np.double).eps )
 
+    return average_reward_around_transition, \
+                actionscount_to_stimulus, \
+                probability_action_given_stimulus
+
+def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
+                                        exp_mean_probability_action_given_stimulus,
+                                        detailed_plots, 
+                                        units='steps', trans='O2V'):    
     # debug print
     #for stimulus_index in range(6):
     #    print(stimulus_index+1,\
@@ -378,7 +384,7 @@ def plot_prob_actions_given_stimuli(actionscount_to_stimulus, detailed_plots,
     #            np.sum(actionscount_to_stimulus\
     #                [stimulus_index,half_window-5:half_window+5,:],axis=-1))
 
-    xvec = range(-half_window,half_window)
+    xvec = range(-half_window,half_window+1)
     if detailed_plots:
         fig, axes = plt.subplots(2,3)
     figall, axall = plt.subplots(1,1)
@@ -402,9 +408,14 @@ def plot_prob_actions_given_stimuli(actionscount_to_stimulus, detailed_plots,
             axes[row,col].set_xlim([-half_window,half_window])
 
         # lick probability given stimuli all in one axes
+        axall.plot(xvec,exp_mean_probability_action_given_stimulus\
+                            [stimulus_index,:,1], marker='x',
+                            color=colors[stimulus_index],
+                            label=labels[stimulus_index])
         axall.plot(xvec,probability_action_given_stimulus\
                             [stimulus_index,:,1], marker='.',
                             color=colors[stimulus_index],
+                            linestyle='dotted',
                             label=labels[stimulus_index])
         axall.set_xlabel(units+' around '+trans+' transition')
         axall.set_ylabel('P(lick|stimulus)')
@@ -416,9 +427,8 @@ def plot_prob_actions_given_stimuli(actionscount_to_stimulus, detailed_plots,
     axall.legend()
     figall.tight_layout()
 
-if __name__ == "__main__":
-
-    # uncomment one of these environments,
+def get_env_agent(agent_type='belief'):
+    # use one of these environments,
     #  with or without blank state at start of each trial
     # OBSOLETE - with blanks environment won't work,
     #  as I've HARDCODED observations to stimuli encoding
@@ -436,33 +446,44 @@ if __name__ == "__main__":
     # instantiate the RL agent either with history or belief
     # choose one of the below:
 
-    # with history=0 and beliefRL=False, need to keep learning always on!
-    #steps = 1000000
-    #agent = BeliefHistoryTabularRL(env,history=0,alpha=0.1,beliefRL=False,
-    #                                learning_time_steps=steps,
-    #                                recording_time_steps=steps//2)
+    if agent_type=='basic' or agent_type=='history0_nobelief':
+        # with history=0 and beliefRL=False, need to keep learning always on!
+        steps = 1000000
+        agent = BeliefHistoryTabularRL(env,history=0,alpha=0.1,beliefRL=False,
+                                        learning_time_steps=steps,
+                                        recording_time_steps=steps//2)
+    elif agent_type=='history1_nobelief':
+        # with history=1 and beliefRL=False, no need to keep learning always on!
+        #  learning stops after learning_time_steps,
+        #  then 1 step correct performance switch!
+        # history=1 takes a bit longer to learn than history=2!
+        steps = 2000000
+        agent = BeliefHistoryTabularRL(env,history=2,beliefRL=False,
+                                        learning_time_steps=steps,
+                                        recording_time_steps=steps//2)
+    elif agent_type=='history2_nobelief':
+        # with history=2 and beliefRL=False, no need to keep learning always on!
+        #  learning stops after learning_time_steps,
+        #  then 1 step correct performance switch!
+        steps = 1000000
+        agent = BeliefHistoryTabularRL(env,history=2,beliefRL=False,
+                                        learning_time_steps=steps//2,
+                                        recording_time_steps=steps//2)
+    elif agent_type=='belief' or agent_type=='history0_belief':
+        # no history, just belief in one of two contexts - two Q tables
+        steps = 500000
+        # obtained by 1-param fit using powell's minimize mse
+        belief_switching_rate = 0.76837728
+        agent = BeliefHistoryTabularRL(env,history=0,beliefRL=True,
+                                        belief_switching_rate=belief_switching_rate,
+                                        learning_time_steps=steps,
+                                        recording_time_steps=steps//2)
 
-    # history=1 takes a bit longer to learn than history=2!
-    steps = 2000000
-    agent = BeliefHistoryTabularRL(env,history=2,beliefRL=False,
-                                    learning_time_steps=steps,
-                                    recording_time_steps=steps//2)
+    return env, agent, steps
 
-    # with history=2 and beliefRL=False, no need to keep learning always on!
-    #  learning stops after learning_time_steps,
-    #  then 1 step correct performance switch!
-    #steps = 1000000
-    #agent = BeliefHistoryTabularRL(env,history=2,beliefRL=False,
-    #                                learning_time_steps=steps//2,
-    #                                recording_time_steps=steps//2)
+if __name__ == "__main__":
 
-    # no history and just belief in one of two contexts - two Q tables
-    #steps = 1000000
-    #agent = BeliefHistoryTabularRL(env,history=0,beliefRL=True,
-    #                                learning_time_steps=steps,
-    #                                recording_time_steps=steps//2)
-
-    ############################################################
+    env, agent, steps = get_env_agent(agent_type='belief')
     
     # train the RL agent on the task
     exp_step, block_vector_exp_compare, \
@@ -483,13 +504,16 @@ if __name__ == "__main__":
     #plt.plot(cumulative_reward)
     ## obsolete - end
 
-    # number of steps on each side of the transition to consider
-    half_window = 30
-
     # obtain the mean reward and action given stimulus around O2V transition
     # no need to pass above variables as they are not modified, only analysed
-    average_reward_around_o2v_transition, actionscount_to_stimulus = \
-        process_transitions(O2V = True)
+    average_reward_around_o2v_transition, \
+        actionscount_to_stimulus_o2v, \
+        probability_action_given_stimulus_o2v = \
+            process_transitions(exp_step, block_vector_exp_compare,
+                                reward_vector_exp_compare,
+                                stimulus_vector_exp_compare,
+                                action_vector_exp_compare,
+                                O2V = True)
 
     if detailed_plots:
         fig3 = plt.figure()
@@ -500,13 +524,41 @@ if __name__ == "__main__":
         plt.xlabel('time steps around olfactory to visual transition')
         plt.ylabel('average reward on time step')
 
-    plot_prob_actions_given_stimuli(actionscount_to_stimulus, detailed_plots)
+    # read experimental data
+    print("reading experimental data")
+    number_of_mice, across_mice_average_reward_o2v, \
+        mice_average_reward_around_transtion_o2v, \
+        mice_actionscount_to_stimulus_o2v, \
+        mice_actionscount_to_stimulus_trials_o2v, \
+        mice_probability_action_given_stimulus_o2v, \
+        mean_probability_action_given_stimulus_o2v = \
+            get_exp_reward_around_transition(trans='O2V')
+    number_of_mice, across_mice_average_reward_v2o, \
+        mice_average_reward_around_transtion_v2o, \
+        mice_actionscount_to_stimulus_v2o, \
+        mice_actionscount_to_stimulus_trials_v2o, \
+        mice_probability_action_given_stimulus_v2o, \
+        mean_probability_action_given_stimulus_v2o = \
+            get_exp_reward_around_transition(trans='V2O')
+    print("finished reading experimental data.")
+
+    plot_prob_actions_given_stimuli(probability_action_given_stimulus_o2v,
+                                    mean_probability_action_given_stimulus_o2v,
+                                        detailed_plots)
 
     # obtain the mean reward and action given stimulus around V2O transition
     # no need to pass above variables as they are not modified, only analysed
-    average_reward_around_o2v_transition, actionscount_to_stimulus = \
-        process_transitions(O2V = False)
+    average_reward_around_v2o_transition, \
+        actionscount_to_stimulus_v2o, \
+        probability_action_given_stimulus_v2o = \
+            process_transitions(exp_step, block_vector_exp_compare,
+                                reward_vector_exp_compare, 
+                                stimulus_vector_exp_compare,
+                                action_vector_exp_compare,
+                                O2V = False)
 
-    plot_prob_actions_given_stimuli(actionscount_to_stimulus, detailed_plots, trans='V2O')
+    plot_prob_actions_given_stimuli(probability_action_given_stimulus_v2o,
+                                    mean_probability_action_given_stimulus_v2o,
+                                        detailed_plots, trans='V2O')
 
     plt.show()

@@ -175,11 +175,6 @@ def get_exp_reward_around_transition(trans='O2V'):
 
     across_mice_average_reward /= number_of_mice
 
-    return (number_of_mice, across_mice_average_reward, \
-                mice_average_reward_around_transtion, \
-                mice_actionscount_to_stimulus, mice_actionscount_to_stimulus_trials)
-
-def plot_prob_actions_given_stimuli(mice_actionscount_to_stimulus, units='steps', trans='O2V'):
     # normalize over the actions (last axis i.e. -1) to get probabilities
     # do not add a small amount to denominator to avoid divide by zero!
     # allowing nan so that irrelvant time steps are not plotted
@@ -190,7 +185,21 @@ def plot_prob_actions_given_stimuli(mice_actionscount_to_stimulus, units='steps'
                 / np.sum(mice_actionscount_to_stimulus,axis=(0,-1))[:,:,np.newaxis] #\
                         #+ np.finfo(np.double).eps )    
 
-    window = mice_actionscount_to_stimulus.shape[2]
+    return (number_of_mice, across_mice_average_reward,
+                mice_average_reward_around_transtion,
+                mice_actionscount_to_stimulus,
+                mice_actionscount_to_stimulus_trials,
+                mice_probability_action_given_stimulus,
+                mean_probability_action_given_stimulus)
+
+def plot_prob_actions_given_stimuli(units='steps', trans='O2V'):
+    # no need to pass in:
+    #  mice_probability_action_given_stimulus,
+    #  mean_probability_action_given_stimulus
+    #  as these are available in the global workspace
+    #  and we don't modify them here, only plot them
+
+    window = mean_probability_action_given_stimulus.shape[1]
 
     # debug print
     #for stimulus_index in range(6):
@@ -246,8 +255,11 @@ def plot_prob_actions_given_stimuli(mice_actionscount_to_stimulus, units='steps'
 if __name__ == "__main__":
     number_of_mice, across_mice_average_reward, \
         mice_average_reward_around_transtion, \
-        mice_actionscount_to_stimulus, mice_actionscount_to_stimulus_trials = \
-            get_exp_reward_around_transition()
+        mice_actionscount_to_stimulus, \
+        mice_actionscount_to_stimulus_trials, \
+        mice_probability_action_given_stimulus, \
+        mean_probability_action_given_stimulus = \
+            get_exp_reward_around_transition(trans='O2V')
 
     fig1 = plt.figure()
     for mouse_number in range(number_of_mice):
@@ -259,15 +271,18 @@ if __name__ == "__main__":
     plt.xlabel('time steps around olfactory to visual transition')
     plt.ylabel('average reward on time step')
     
-    plot_prob_actions_given_stimuli(mice_actionscount_to_stimulus)
+    plot_prob_actions_given_stimuli(trans='O2V')
     
     #plot_prob_actions_given_stimuli(mice_actionscount_to_stimulus_trials,'trials')
 
     number_of_mice, across_mice_average_reward, \
         mice_average_reward_around_transtion, \
-        mice_actionscount_to_stimulus, mice_actionscount_to_stimulus_trials = \
+        mice_actionscount_to_stimulus, \
+        mice_actionscount_to_stimulus_trials, \
+        mice_probability_action_given_stimulus, \
+        mean_probability_action_given_stimulus = \
             get_exp_reward_around_transition(trans='V2O')
 
-    plot_prob_actions_given_stimuli(mice_actionscount_to_stimulus, trans='V2O')
+    plot_prob_actions_given_stimuli(trans='V2O')
     
     plt.show()
