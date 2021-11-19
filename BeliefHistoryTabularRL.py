@@ -27,7 +27,8 @@ class BeliefHistoryTabularRL():
                 exploration_decay=False, exploration_decay_time_steps=100000,
                 learning_time_steps=100000, recording_time_steps=100000,
                 history=0,
-                beliefRL=True, belief_switching_rate=0.7):
+                beliefRL=True, belief_switching_rate=0.7,
+                belief_exploration_add_factor=8):
         self.env = env
 
         # policy can be one of these
@@ -73,11 +74,14 @@ class BeliefHistoryTabularRL():
             #  but currently, we don't incorporate context learning,
             #  so context prediction, detection and switching are applied from the start
             self.belief_switching_rate = belief_switching_rate
+            self.belief_exploration_add_factor = belief_exploration_add_factor
 
             # assume agent knows number of contexts before-hand (ideally, should learn!)
             self.n_contexts = 2
             self.context_belief_probabilities = np.zeros(self.n_contexts)
             self.context_belief_probabilities[0] = 1 # at start, agent assumes context 0
+            self.context_prediction_error = np.zeros(self.n_contexts)
+            self.true_context = np.array((0.5,0.5))
 
             # choose one of the options below, for assuming a context at each step:
             # if True, agent weights Q values of contexts by current context probabilities
@@ -134,6 +138,14 @@ class BeliefHistoryTabularRL():
                         np.clip(1.-self.t/self.exploration_decay_time_steps,0,1)
 
             if self.beliefRL:
+                # using context_prediction_error instead of context_belief_probabilities
+                #  the former detects context change and affects exploration from first trial after transition
+                #  the latter updates in first trial and affects exploration from second trial after transtion
+                #context_uncertainty = 1.0 - np.abs(self.context_belief_probabilities[0]\
+                #                                    -self.context_belief_probabilities[1])
+                context_uncertainty = ( np.abs(self.context_prediction_error[0])\
+                                                    + np.abs(self.context_prediction_error[1]) ) / 2.
+                self.exploration_rate *= (1 + self.belief_exploration_add_factor*context_uncertainty)
                 if self.weight_contexts_by_probabilities:
                     # agent weights Q values of contexts by current context probabilities
                     pass # to implement
@@ -256,6 +268,22 @@ class BeliefHistoryTabularRL():
                 # debug print
                 #print(self.t,self.reward,value_prediction_error)
 
+                if self.beliefRL:
+                    if self.observation in self.odor_observations:
+                        self.true_context = (0.,1.)
+                    elif self.observation in self.visual_observations:
+                        # to rectify as this is not quite correct,
+                        #  as this could be irrelevant visual in odor block
+                        self.true_context = (1.,0.)
+                    
+                    # context prediction error is computed at each observation
+                    #  so that it can be used to modulate exploration
+                    #  but context_belief_probabilities is
+                    #  updated only at the end of a trial,
+                    #  so as to update only once per trial
+                    self.context_prediction_error = \
+                        self.true_context - self.context_belief_probabilities
+
             ################ end of trial processing, including context belief update
             if self.done:
                 if self.beliefRL:
@@ -264,24 +292,28 @@ class BeliefHistoryTabularRL():
                     #  just whether an olfactory cue is expected or not before trial ends
                     #  is enough to serve as a context prediction
                     #  and thence we compute context prediction error
-                    if self.previous_observation in self.odor_observations: self.true_context = (0.,1.)
-                    else: self.true_context = (1.,0.)
+                    if self.previous_observation in self.odor_observations:
+                        self.true_context = (0.,1.)
+                    else:
+                        self.true_context = (1.,0.)
                     
                     #if weight_contexts_by_probabilities:
-                    #    context_prediction_error = \
+                    #    self.context_prediction_error = \
                     #        true_context - context_belief_probabilities
                     #else:
-                    #    context_prediction_error = \
+                    #    self.context_prediction_error = \
                     #        true_context - context_assumed_now
-                    context_prediction_error = \
+                    self.context_prediction_error = \
                         self.true_context - self.context_belief_probabilities
 
                     # update context belief by context prediction error
                     self.context_belief_probabilities += \
-                        self.belief_switching_rate * context_prediction_error
-                    self.context_belief_probabilities = np.clip(self.context_belief_probabilities,0.,1.)
+                            self.belief_switching_rate * self.context_prediction_error
+                    self.context_belief_probabilities = \
+                            np.clip(self.context_belief_probabilities,0.,1.)
                     # normalize context belief probabilities
-                    self.context_belief_probabilities /= np.sum(self.context_belief_probabilities)
+                    self.context_belief_probabilities /= \
+                            np.sum(self.context_belief_probabilities)
                 
                 trial_num += 1
                 # info message
@@ -449,7 +481,16 @@ def get_env_agent(agent_type='belief'):
     if agent_type=='basic' or agent_type=='history0_nobelief':
         # with history=0 and beliefRL=False, need to keep learning always on!
         steps = 1000000
-        agent = BeliefHistoryTabularRL(env,history=0,alpha=0.1,beliefRL=False,
+        # 2-param fit using brute to minimize mse,
+        #  ended without success, due to exceeding max func evals
+        #epsilon, alpha = 0.21886517, 0.72834129
+        # does not give a sudden peak/lick in /+V stimulus in V2O transition
+        #epsilon, alpha = 0.2, 0.2
+        # 2-param fit using brute to minimize mse,
+        #  fitting nan-s to nan-s, terminated successfully
+        epsilon, alpha = 0.21947144, 0.76400787
+        agent = BeliefHistoryTabularRL(env,history=0,beliefRL=False,
+                                        alpha=alpha,epsilon=epsilon,
                                         learning_time_steps=steps,
                                         recording_time_steps=steps//2)
     elif agent_type=='history1_nobelief':
@@ -471,11 +512,22 @@ def get_env_agent(agent_type='belief'):
                                         recording_time_steps=steps//2)
     elif agent_type=='belief' or agent_type=='history0_belief':
         # no history, just belief in one of two contexts - two Q tables
+        # keeping exploration & learning always on
+        #  for noise and belief uncertainty driven exploration
         steps = 500000
         # obtained by 1-param fit using powell's minimize mse
-        belief_switching_rate = 0.76837728
+        #belief_switching_rate = 0.76837728
+        # obtained by 3-param fit using powell's minimize mse -- out of bounds - gives nans
+        #belief_switching_rate, epsilon, alpha = 1.694975  , 0.48196603, 2.1
+        # obtained by 3-param fit using brute minimize mse
+        #belief_switching_rate, epsilon, alpha = 0.6, 0.1, 0.105
+        # obtained by 3-param fit using brute minimize mse (alpha fixed at 0.1)
+        belief_switching_rate, epsilon, belief_exploration_add_factor, alpha \
+                    = 0.52291667, 0.10208333, 8.146875, 0.1
         agent = BeliefHistoryTabularRL(env,history=0,beliefRL=True,
                                         belief_switching_rate=belief_switching_rate,
+                                        alpha=alpha, epsilon=epsilon,
+                                        belief_exploration_add_factor=belief_exploration_add_factor,
                                         learning_time_steps=steps,
                                         recording_time_steps=steps//2)
 
@@ -483,7 +535,8 @@ def get_env_agent(agent_type='belief'):
 
 if __name__ == "__main__":
 
-    env, agent, steps = get_env_agent(agent_type='belief')
+    #env, agent, steps = get_env_agent(agent_type='belief')
+    env, agent, steps = get_env_agent(agent_type='basic')
     
     # train the RL agent on the task
     exp_step, block_vector_exp_compare, \
