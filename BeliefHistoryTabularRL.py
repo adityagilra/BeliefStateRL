@@ -480,7 +480,8 @@ def get_env_agent(agent_type='belief'):
 
     if agent_type=='basic' or agent_type=='history0_nobelief':
         # with history=0 and beliefRL=False, need to keep learning always on!
-        steps = 1000000
+        #steps = 1000000
+        steps = 2000000
         # 2-param fit using brute to minimize mse,
         #  ended without success, due to exceeding max func evals
         #epsilon, alpha = 0.21886517, 0.72834129
@@ -514,7 +515,8 @@ def get_env_agent(agent_type='belief'):
         # no history, just belief in one of two contexts - two Q tables
         # keeping exploration & learning always on
         #  for noise and belief uncertainty driven exploration
-        steps = 500000
+        #steps = 500000
+        steps = 2000000
         # obtained by 1-param fit using powell's minimize mse
         #belief_switching_rate = 0.76837728
         # obtained by 3-param fit using powell's minimize mse -- out of bounds - gives nans
@@ -522,8 +524,11 @@ def get_env_agent(agent_type='belief'):
         # obtained by 3-param fit using brute minimize mse
         #belief_switching_rate, epsilon, alpha = 0.6, 0.1, 0.105
         # obtained by 3-param fit using brute minimize mse (alpha fixed at 0.1)
+        #belief_switching_rate, epsilon, belief_exploration_add_factor, alpha \
+        #            = 0.52291667, 0.10208333, 8.146875, 0.1
+        # obtained by 3-param fit using brute minimize mse with nan-errors (alpha fixed at 0.1)
         belief_switching_rate, epsilon, belief_exploration_add_factor, alpha \
-                    = 0.52291667, 0.10208333, 8.146875, 0.1
+                    = 0.54162102, 0.09999742, 8.2049604, 0.1
         agent = BeliefHistoryTabularRL(env,history=0,beliefRL=True,
                                         belief_switching_rate=belief_switching_rate,
                                         alpha=alpha, epsilon=epsilon,
@@ -535,8 +540,9 @@ def get_env_agent(agent_type='belief'):
 
 if __name__ == "__main__":
 
-    #env, agent, steps = get_env_agent(agent_type='belief')
-    env, agent, steps = get_env_agent(agent_type='basic')
+    ############## choose / uncomment one of the agents below! #################
+    env, agent, steps = get_env_agent(agent_type='belief')
+    #env, agent, steps = get_env_agent(agent_type='basic')
     
     # train the RL agent on the task
     exp_step, block_vector_exp_compare, \

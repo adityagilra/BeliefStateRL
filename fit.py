@@ -31,6 +31,12 @@ def meansquarederror(parameters,
         agent.alpha = learning_rate
         agent.epsilon = exploration_rate
 
+    # since I use different number of training steps
+    #  than the agent was initialized envisaged for,
+    #  I need to adjust the learning and recording time steps
+    agent.learning_time_steps=steps
+    agent.recording_time_steps=steps//2
+
     # train the RL agent on the task
     exp_step, block_vector_exp_compare, \
         reward_vector_exp_compare, stimulus_vector_exp_compare, \
@@ -134,10 +140,16 @@ if __name__ == "__main__":
     #mean_probability_action_given_stimulus_v2o[\
     #    np.isnan(mean_probability_action_given_stimulus_v2o)] = -0.5
 
-    #agent_type = 'belief'
-    agent_type = 'basic'
+    agent_type = 'belief'
+    #agent_type = 'basic'
 
     env, agent, steps = get_env_agent(agent_type=agent_type)
+    # steps return by agent here are much longer
+    #  and fitting would take quite long, so using lower number of steps
+    if agent_type == 'basic':
+        steps = 1000000
+    elif agent_type == 'belief':
+        steps = 500000
 
     if agent_type == 'belief':
         belief_switching_rate_start = 0.7
