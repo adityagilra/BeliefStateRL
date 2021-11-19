@@ -403,7 +403,7 @@ def process_transitions(exp_step, block_vector_exp_compare,
 
 def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
                                         exp_mean_probability_action_given_stimulus,
-                                        detailed_plots, 
+                                        detailed_plots, agent_type='',
                                         units='steps', trans='O2V'):    
     # debug print
     #for stimulus_index in range(6):
@@ -426,6 +426,10 @@ def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
     #colors = ['r','g','y','c','b','m']
     colors = ['b','r','b','r','g','y']
     labels = ['+v','-v','/+v','/-v','+o','-o']
+
+    figabstract, axabstract = plt.subplots(1,1)
+    axabstract.plot([0,0],[0,1],',k',linestyle='--')
+
     for stimulus_index in range(6):
         if detailed_plots:
             row = stimulus_index//3
@@ -453,11 +457,24 @@ def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
         axall.set_ylabel('P(lick|stimulus)')
         axall.set_xlim([-half_window,half_window])
 
+        axabstract.plot(xvec,probability_action_given_stimulus\
+                            [stimulus_index,:,1], marker='.',
+                            color=colors[stimulus_index],
+                            linestyle='solid',
+                            label=labels[stimulus_index])
+        axabstract.set_xlabel(units+' around '+trans+' transition')
+        axabstract.set_ylabel('P(lick|stimulus)')
+        axabstract.set_xlim([-half_window,half_window])
+
     if detailed_plots:
         axes[row,col].legend()
         fig.subplots_adjust(wspace=0.5,hspace=0.5)
     axall.legend()
     figall.tight_layout()
+    
+    figabstract.tight_layout()
+    figabstract.savefig('RL_'+agent_type+'_'+trans+'.pdf')
+    figabstract.savefig('RL_'+agent_type+'_'+trans+'.svg')
 
 def get_env_agent(agent_type='belief'):
     # use one of these environments,
@@ -541,8 +558,10 @@ def get_env_agent(agent_type='belief'):
 if __name__ == "__main__":
 
     ############## choose / uncomment one of the agents below! #################
-    env, agent, steps = get_env_agent(agent_type='belief')
-    #env, agent, steps = get_env_agent(agent_type='basic')
+    agent_type='belief'
+    #agent_type='basic'
+    
+    env, agent, steps = get_env_agent(agent_type)
     
     # train the RL agent on the task
     exp_step, block_vector_exp_compare, \
@@ -603,7 +622,7 @@ if __name__ == "__main__":
 
     plot_prob_actions_given_stimuli(probability_action_given_stimulus_o2v,
                                     mean_probability_action_given_stimulus_o2v,
-                                        detailed_plots)
+                                        detailed_plots, agent_type=agent_type)
 
     # obtain the mean reward and action given stimulus around V2O transition
     # no need to pass above variables as they are not modified, only analysed
@@ -618,6 +637,7 @@ if __name__ == "__main__":
 
     plot_prob_actions_given_stimuli(probability_action_given_stimulus_v2o,
                                     mean_probability_action_given_stimulus_v2o,
-                                        detailed_plots, trans='V2O')
+                                        detailed_plots, agent_type=agent_type,
+                                        trans='V2O')
 
     plt.show()
