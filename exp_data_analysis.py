@@ -60,8 +60,13 @@ np.random.seed(1)
 #                                        struct_as_record=True)
 # Nick sent new data confirming a few stimuli were shown not as intended as per task design
 # so he has removed them
+#mouse_behaviour_data = scipyio.loadmat(
+#                    "experiment_data/exported_behavioural_data_Control_vs_ACC_silencing_-30_+30_trials_errors_removed.mat",
+#                                        struct_as_record=True)
+# Nick said that 50% olfactory performance after v2o switch was an "error with separating the first few trials following a switch"
+# so he has re-exported the data correctly now:
 mouse_behaviour_data = scipyio.loadmat(
-                    "experiment_data/exported_behavioural_data_Control_vs_ACC_silencing_-30_+30_trials_errors_removed.mat",
+                    "experiment_data/exported_behavioural_data_Control_vs_ACC_silencing_-30_+30_trials_secondbug_corrected.mat",
                                         struct_as_record=True)
 
 transition_index = 29
@@ -74,10 +79,11 @@ punish_factor=0.5
 # the exp data doesn't contain blanks and end of trial cues as in the model task, so not taken into account
 #lick_without_reward_factor=0.2
 
-def get_exp_reward_around_transition(trans='O2V'):
-    behaviour_data = mouse_behaviour_data['ans']['control'][0,0]['mouse'+trans][0,0]
+def get_exp_reward_around_transition(trans='O2V',ACC='control'):
+    # ACC can be 'control' (without ACC silenced) or 'exp' (with ACC silenced)
+    behaviour_data = mouse_behaviour_data['expData'][ACC][0,0]['mouse'+trans][0,0]
     window = behaviour_data[0,0][0,0]['stimulus'].shape[1]
-    number_of_mice = len(mouse_behaviour_data['ans']['control'][0,0]['mouse'+trans][0,0][0])
+    number_of_mice = len(mouse_behaviour_data['expData'][ACC][0,0]['mouse'+trans][0,0][0])
     mice_average_reward_around_transtion = np.zeros((number_of_mice,window))
     across_mice_average_reward = np.zeros(window)
     mice_actionscount_to_stimulus = np.zeros((number_of_mice,6,window,2)) # 6 stimuli, 2 actions
@@ -253,13 +259,17 @@ def plot_prob_actions_given_stimuli(units='steps', trans='O2V'):
     figall.tight_layout()
 
 if __name__ == "__main__":
+    # choose control for ACC not inhibited, exp for ACC inhibited
+    #ACC = 'control'
+    ACC = 'exp'
+    
     number_of_mice, across_mice_average_reward, \
         mice_average_reward_around_transtion, \
         mice_actionscount_to_stimulus, \
         mice_actionscount_to_stimulus_trials, \
         mice_probability_action_given_stimulus, \
         mean_probability_action_given_stimulus = \
-            get_exp_reward_around_transition(trans='O2V')
+            get_exp_reward_around_transition(trans='O2V',ACC=ACC)
 
     fig1 = plt.figure()
     for mouse_number in range(number_of_mice):
@@ -281,7 +291,7 @@ if __name__ == "__main__":
         mice_actionscount_to_stimulus_trials, \
         mice_probability_action_given_stimulus, \
         mean_probability_action_given_stimulus = \
-            get_exp_reward_around_transition(trans='V2O')
+            get_exp_reward_around_transition(trans='V2O',ACC=ACC)
 
     plot_prob_actions_given_stimuli(trans='V2O')
     

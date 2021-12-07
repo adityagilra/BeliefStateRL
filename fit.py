@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from exp_data_analysis import get_exp_reward_around_transition
-from BeliefHistoryTabularRL import BeliefHistoryTabularRL, get_env_agent, \
+from BeliefHistoryTabularRLSimulate import get_env_agent, \
                                     process_transitions, half_window
 import sys
 from scipy.optimize import minimize, Bounds, brute
@@ -111,6 +111,17 @@ def meansquarederror(parameters,
     return mse
 
 if __name__ == "__main__":
+    
+    # choose whether ACC is inhibited or not
+    ACC_off = True
+    #ACC_off = False
+    if ACC_off:
+        ACC_off_factor = 0.5 # inhibited ACC
+        ACC_str = 'exp'
+    else:
+        ACC_off_factor = 1.0 # uninhibited ACC
+        ACC_str = 'control'
+
     # read experimental data
     print("reading experimental data")
     number_of_mice, across_mice_average_reward_o2v, \
@@ -119,14 +130,14 @@ if __name__ == "__main__":
         mice_actionscount_to_stimulus_trials_o2v, \
         mice_probability_action_given_stimulus_o2v, \
         mean_probability_action_given_stimulus_o2v = \
-            get_exp_reward_around_transition(trans='O2V')
+            get_exp_reward_around_transition(trans='O2V',ACC=ACC_str)
     number_of_mice, across_mice_average_reward_v2o, \
         mice_average_reward_around_transtion_v2o, \
         mice_actionscount_to_stimulus_v2o, \
         mice_actionscount_to_stimulus_trials_v2o, \
         mice_probability_action_given_stimulus_v2o, \
         mean_probability_action_given_stimulus_v2o = \
-            get_exp_reward_around_transition(trans='V2O')
+            get_exp_reward_around_transition(trans='V2O',ACC=ACC_str)
     print("finished reading experimental data.")
 
     # replace nan-s by -0.5 in mouse behaviour (done for agent in fitting)
@@ -143,7 +154,13 @@ if __name__ == "__main__":
     agent_type = 'belief'
     #agent_type = 'basic'
 
-    env, agent, steps = get_env_agent(agent_type=agent_type)
+    seed = 1
+
+    # Instantiate the env and the agent
+    env, agent, steps = get_env_agent(agent_type=agent_type, 
+                                        ACC_off_factor=ACC_off_factor,
+                                        seed=seed)
+    
     # steps return by agent here are much longer
     #  and fitting would take quite long, so using lower number of steps
     if agent_type == 'basic':
