@@ -22,9 +22,11 @@ def meansquarederror(parameters,
         agent.epsilon = exploration_rate
         #learning_rate = parameters[2]
         #agent.alpha = learning_rate
-        belief_exploration_add_factor = parameters[2]
-        agent.belief_exploration_add_factor = \
-                belief_exploration_add_factor
+        #belief_exploration_add_factor = parameters[2]
+        #agent.belief_exploration_add_factor = \
+        #        belief_exploration_add_factor
+        weak_visual_factor = parameters[2]
+        agent.weak_visual_factor = weak_visual_factor
     else:
         exploration_rate = parameters[0]
         learning_rate = parameters[1]
@@ -34,35 +36,40 @@ def meansquarederror(parameters,
     # since I use different number of training steps
     #  than the agent was initialized envisaged for,
     #  I need to adjust the learning and recording time steps
-    agent.learning_time_steps=steps
+    #agent.learning_time_steps=steps
+    agent.learning_time_steps=steps//2
     agent.recording_time_steps=steps//2
 
     # train the RL agent on the task
     exp_step, block_vector_exp_compare, \
         reward_vector_exp_compare, stimulus_vector_exp_compare, \
-            action_vector_exp_compare = \
+            action_vector_exp_compare, context_record = \
                 agent.train(steps)
 
     # obtain the mean reward and action given stimulus around O2V transition
     # no need to pass above variables as they are not modified, only analysed
     average_reward_around_o2v_transition, \
         actionscount_to_stimulus_o2v, \
-        probability_action_given_stimulus_o2v = \
+        probability_action_given_stimulus_o2v, \
+        context_o2v = \
             process_transitions(exp_step, block_vector_exp_compare,
                                 reward_vector_exp_compare,
                                 stimulus_vector_exp_compare,
                                 action_vector_exp_compare,
+                                context_record,
                                 O2V = True)
 
     # obtain the mean reward and action given stimulus around V2O transition
     # no need to pass above variables as they are not modified, only analysed
     average_reward_around_v2o_transition, \
         actionscount_to_stimulus_v2o, \
-        probability_action_given_stimulus_v2o = \
+        probability_action_given_stimulus_v2o, \
+        context_v2o = \
             process_transitions(exp_step, block_vector_exp_compare,
                                 reward_vector_exp_compare,
                                 stimulus_vector_exp_compare,
                                 action_vector_exp_compare,
+                                context_record,
                                 O2V = False)
 
     # replace nan-s by -0.5 in agent behaviour (already done for experiment)
@@ -176,11 +183,14 @@ if __name__ == "__main__":
         #                exploration_rate_start, learning_rate_start)
         #ranges = ((0.5,0.9),(0.1,0.5),(0.1,0.8))
         #bounds_obj = Bounds((0.5,0.,0.),(0.9,1.,1.))
-        belief_exploration_add_factor_start = 8 
+        #belief_exploration_add_factor_start = 8
+        weak_visual_factor_start = 0.3
         parameters = (belief_switching_rate_start,
                         exploration_rate_start,
-                        belief_exploration_add_factor_start)
-        ranges = ((0.5,0.9),(0.1,0.4),(3,10))
+                        weak_visual_factor_start)
+                        #belief_exploration_add_factor_start)
+        #ranges = ((0.5,0.9),(0.1,0.4),(3,10))
+        ranges = ((0.5,0.9),(0.1,0.4),(0.1,0.5))
     elif agent_type == 'basic':
         exploration_rate_start = 0.1
         learning_rate_start = 0.1

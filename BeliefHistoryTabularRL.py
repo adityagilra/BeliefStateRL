@@ -10,6 +10,7 @@ class BeliefHistoryTabularRL():
                 learning_time_steps=100000, recording_time_steps=100000,
                 history=0,
                 beliefRL=True, belief_switching_rate=0.7, ACC_off_factor=1.,
+                weak_visual_factor = 0.3,
                 exploration_is_modulated_by_context_prediction_error=False,
                 exploration_add_factor_for_context_prediction_error=8):
         self.env = env
@@ -62,6 +63,7 @@ class BeliefHistoryTabularRL():
             #  it is factor to reduce context prediction error as a proxy for ACC silencing
             #  setting is as 1 implies no ACC silencing
             self.ACC_off_factor = ACC_off_factor
+            self.weak_visual_factor = weak_visual_factor
             # whether exploration is modulated by context prediction error,
             #  and by how much additional factor
             self.exploration_is_modulated_by_context_prediction_error = \
@@ -181,6 +183,7 @@ class BeliefHistoryTabularRL():
         block_vector_exp_compare = np.zeros(steps)
         stimulus_vector_exp_compare = np.zeros(steps)
         action_vector_exp_compare = np.zeros(steps)
+        context_record = np.zeros((steps,self.n_contexts))
         exp_step = 0 # step index as would be saved in experiment
         
         trial_num = 0
@@ -218,6 +221,9 @@ class BeliefHistoryTabularRL():
                             self.previous_observation+3 # 0 to 3 mapped to 3 to 6
                 # this is the action to the previous_observation
                 action_vector_exp_compare[exp_step] = self.action
+                
+                # current context belief probabilities
+                context_record[exp_step,:] = self.context_belief_probabilities
 
                 # increment the running index of the saved vectors
                 exp_step += 1
@@ -268,56 +274,49 @@ class BeliefHistoryTabularRL():
                 # debug print
                 #print(self.t,self.reward,value_prediction_error)
 
-                if self.beliefRL:
-                    if self.observation in self.odor_observations:
-                        self.true_context = (0.,1.)
-                    elif self.observation in self.visual_observations:
-                        # to rectify as this is not quite correct,
-                        #  as this could be irrelevant visual in odor block
-                        self.true_context = (1.,0.)
-                    
-                    # context prediction error is computed at each observation
-                    #  so that it can be used to modulate exploration
-                    #  but context_belief_probabilities is
-                    #  updated only at the end of a trial,
-                    #  so as to update only once per trial
+            #################### context prediction error and context belief updation
+            if self.beliefRL:
+                ###### context prediction error:
+                # we don't need to predict transitions from each state to the next.
+                #  just whether an olfactory cue is expected or not before trial ends
+                #  is enough to serve as a context prediction
+                #  and thence we compute context prediction error
+                # but instead of waiting for the olfactory cue at the end of a trisl,
+                #  we can calculate a context prediction error at every step
 
-                    #if weight_contexts_by_probabilities:
-                    #    self.context_prediction_error = \
-                    #        true_context - context_belief_probabilities
-                    #else:
-                    #    self.context_prediction_error = \
-                    #        true_context - context_assumed_now
+                if self.weight_contexts_by_probabilities:
+                    context_effective = self.context_belief_probabilities
+                else:
+                    #context_used = self.context_assumed_now
+                    context_effective = self.context_belief_probabilities
 
+                if self.observation in self.odor_observations:
+                    # definitely an olfactory context
+                    self.context_prediction_error = np.array((0.,1.)) - context_effective
+                elif self.observation in self.visual_observations:
+                    # this could be irrelevant visual in odor block as well
+                    #  thus we reduce the error signal by a factor
                     self.context_prediction_error = \
-                        self.true_context - self.context_belief_probabilities
-                    
-                    # ACC encoding of prediction error can be reduced by a factor
-                    #  that serves as a proxy for ACC silencing
-                    self.context_prediction_error *= self.ACC_off_factor
+                        self.weak_visual_factor * (np.array((1.,0.)) - context_effective)
+                else:
+                    # other cues like end_trial don't produce a context prediction error
+                    self.context_prediction_error = np.array((0.,0.))
 
-            ################ end of trial processing, including context belief update
-            if self.done:
-                if self.beliefRL:
-                    # context prediction error and update context_belief_probabilities
-                    #  we don't need to predict transitions from each state to the next.
-                    #  just whether an olfactory cue is expected or not before trial ends
-                    #  is enough to serve as a context prediction
-                    #  and thence we compute context prediction error
-                    if self.previous_observation in self.odor_observations:
-                        self.true_context = (0.,1.)
-                    else:
-                        self.true_context = (1.,0.)
-                    
-                    # update context belief by context prediction error
-                    self.context_belief_probabilities += \
-                            self.belief_switching_rate * self.context_prediction_error
-                    self.context_belief_probabilities = \
-                            np.clip(self.context_belief_probabilities,0.,1.)
-                    # normalize context belief probabilities
-                    self.context_belief_probabilities /= \
-                            np.sum(self.context_belief_probabilities)
-                
+                # ACC encoding of prediction error can be reduced by a factor
+                #  that serves as a proxy for ACC silencing
+                self.context_prediction_error *= self.ACC_off_factor
+
+                ###### update context belief by context prediction error
+                self.context_belief_probabilities += \
+                        self.belief_switching_rate * self.context_prediction_error
+                self.context_belief_probabilities = \
+                        np.clip(self.context_belief_probabilities,0.,1.)
+                #  normalize context belief probabilities after the update
+                self.context_belief_probabilities /= \
+                        np.sum(self.context_belief_probabilities)
+
+            ################ end of trial processing
+            if self.done:                
                 trial_num += 1
                 # info message
                 if trial_num%10000==0:
@@ -335,4 +334,4 @@ class BeliefHistoryTabularRL():
         #print(self.Q_array)
 
         return exp_step, block_vector_exp_compare, reward_vector_exp_compare, \
-                    stimulus_vector_exp_compare, action_vector_exp_compare
+                    stimulus_vector_exp_compare, action_vector_exp_compare, context_record
