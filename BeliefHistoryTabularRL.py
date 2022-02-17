@@ -10,7 +10,7 @@ class BeliefHistoryTabularRL():
                 learning_time_steps=100000, recording_time_steps=100000,
                 history=0,
                 beliefRL=True, belief_switching_rate=0.7, ACC_off_factor=1.,
-                weak_visual_factor = 0.3,
+                weak_visual_factor = 0.1,
                 exploration_is_modulated_by_context_prediction_error=False,
                 exploration_add_factor_for_context_prediction_error=8):
         self.env = env
@@ -281,7 +281,7 @@ class BeliefHistoryTabularRL():
                 #  just whether an olfactory cue is expected or not before trial ends
                 #  is enough to serve as a context prediction
                 #  and thence we compute context prediction error
-                # but instead of waiting for the olfactory cue at the end of a trisl,
+                # but instead of waiting for the olfactory cue at the end of a trial,
                 #  we can calculate a context prediction error at every step
 
                 if self.weight_contexts_by_probabilities:
@@ -294,10 +294,11 @@ class BeliefHistoryTabularRL():
                     # definitely an olfactory context
                     self.context_prediction_error = np.array((0.,1.)) - context_effective
                 elif self.observation in self.visual_observations:
+                    self.context_prediction_error = np.array((1.,0.)) - context_effective
                     # this could be irrelevant visual in odor block as well
-                    #  thus we reduce the error signal by a factor
-                    self.context_prediction_error = \
-                        self.weak_visual_factor * (np.array((1.,0.)) - context_effective)
+                    #  thus we reduce the error signal by a factor if context assumed is olfactory
+                    if self.context_assumed_now == 1: # odor block
+                        self.context_prediction_error *= self.weak_visual_factor
                 else:
                     # other cues like end_trial don't produce a context prediction error
                     self.context_prediction_error = np.array((0.,0.))
@@ -307,11 +308,15 @@ class BeliefHistoryTabularRL():
                 self.context_prediction_error *= self.ACC_off_factor
 
                 ###### update context belief by context prediction error
+                ###### Ideally, I should be doing a Bayesian update,
+                ######  but this seems easier to implement bio-plausibly,
+                ######  and will be similar possibly indistinguishable from a Bayesian update
                 self.context_belief_probabilities += \
                         self.belief_switching_rate * self.context_prediction_error
+                # normalize context belief probabilities after the update
+                # avoid negative probabilities
                 self.context_belief_probabilities = \
-                        np.clip(self.context_belief_probabilities,0.,1.)
-                #  normalize context belief probabilities after the update
+                        np.clip(self.context_belief_probabilities,0.,np.inf)
                 self.context_belief_probabilities /= \
                         np.sum(self.context_belief_probabilities)
 

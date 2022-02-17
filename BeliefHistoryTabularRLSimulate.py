@@ -183,7 +183,7 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
     #env = gym.make('visual_olfactory_attention_switch-v0')
     # HARDCODED these observations to stimuli encoding
     env = gym.make('visual_olfactory_attention_switch_no_blank-v0',
-                    lick_without_reward_factor=1.)
+                    lick_without_reward_factor=0.2)
 
     ############# agent instatiation and agent parameters ###########
     # you need around 1,000,000 steps for enough transitions to average over
@@ -250,8 +250,8 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
                     = 0.8, 0.1, 0, 0.1
 
         # choose one of the two below:
+        #exploration_is_modulated_by_context_prediction_error = True
         exploration_is_modulated_by_context_prediction_error = False
-        #exploration_is_modulated_by_context_prediction_error = False
         if exploration_is_modulated_by_context_prediction_error:
             # keep exploration & learning always on
             #  for noise and belief uncertainty driven exploration
@@ -279,8 +279,8 @@ if __name__ == "__main__":
     #agent_type='basic'
     
     # choose whether ACC is inhibited or not
-    ACC_off = True
-    #ACC_off = False
+    #ACC_off = True
+    ACC_off = False
     if ACC_off:
         ACC_off_factor = 0.5 # inhibited ACC
         ACC_str = 'exp'
@@ -296,6 +296,8 @@ if __name__ == "__main__":
         reward_vector_exp_compare, stimulus_vector_exp_compare, \
             action_vector_exp_compare, context_record = \
                 agent.train(steps)
+
+    print('Q-values dict {state: context x action} = ',agent.Q_array)
 
     detailed_plots = False
 
