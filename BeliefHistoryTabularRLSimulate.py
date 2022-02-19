@@ -24,7 +24,7 @@ def process_transitions(exp_step, block_vector_exp_compare,
                         reward_vector_exp_compare, 
                         stimulus_vector_exp_compare,
                         action_vector_exp_compare,
-                        context_record,
+                        context_record, mismatch_error_record,
                         O2V=True):
     # exp_step, at end of time loop above, equals end index saved in _exp_compare vectors
     # clip vector at exp_step, to avoid detecting a last spurious transtion in block_vector_exp_compare
@@ -40,6 +40,7 @@ def process_transitions(exp_step, block_vector_exp_compare,
     average_reward_around_transition = np.zeros(half_window*2+1)
     actionscount_to_stimulus = np.zeros((6,half_window*2+1,2)) # 6 stimuli, 2 actions
     context = np.zeros((half_window*2+1,len(context_record[0])))
+    mismatch_error = np.zeros((half_window*2+1,len(context_record[0])))
     num_transitions_averaged = 0
     for transition in transitions:
         # take edge effects into account when taking a window around transition
@@ -76,6 +77,7 @@ def process_transitions(exp_step, block_vector_exp_compare,
             #        actionscount_to_stimulus[stimulus_number-1,half_window-5:half_window+5,1])
 
         context[window_start:window_end,:] += context_record[window_min:window_max,:]
+        mismatch_error[window_start:window_end,:] += mismatch_error_record[window_min:window_max,:]
 
         num_transitions_averaged += 1
     average_reward_around_transition /= num_transitions_averaged
@@ -88,16 +90,18 @@ def process_transitions(exp_step, block_vector_exp_compare,
                         #+ np.finfo(np.double).eps )
 
     context /= num_transitions_averaged
+    mismatch_error /= num_transitions_averaged
 
     return average_reward_around_transition, \
                 actionscount_to_stimulus, \
                 probability_action_given_stimulus, \
-                context
+                context, mismatch_error
 
 def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
                                         exp_mean_probability_action_given_stimulus,
-                                        context,
-                                        detailed_plots, agent_type='',
+                                        context, mismatch_error,
+                                        detailed_plots, abstract_plots,
+                                        agent_type='',
                                         units='steps', trans='O2V'):    
     # debug print
     #for stimulus_index in range(6):
@@ -121,8 +125,9 @@ def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
     colors = ['b','r','b','r','g','y']
     labels = ['+v','-v','/+v','/-v','+o','-o']
 
-    figabstract, axabstract = plt.subplots(1,1)
-    axabstract.plot([0,0],[0,1],',k',linestyle='--')
+    if abstract_plots:
+        figabstract, axabstract = plt.subplots(1,1)
+        axabstract.plot([0,0],[0,1],',k',linestyle='--')
 
     for stimulus_index in range(6):
         if detailed_plots:
@@ -151,19 +156,20 @@ def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
         axall.set_ylabel('P(lick|stimulus)')
         axall.set_xlim([-half_window,half_window])
 
-        axabstract.plot(xvec,probability_action_given_stimulus\
-                            [stimulus_index,:,1], marker='.',
-                            color=colors[stimulus_index],
-                            linestyle='solid',
-                            label=labels[stimulus_index])
-        axabstract.set_xlabel(units+' around '+trans+' transition')
-        axabstract.set_ylabel('P(lick|stimulus)')
-        axabstract.set_xlim([-half_window,half_window])
+        if abstract_plots:
+            axabstract.plot(xvec,probability_action_given_stimulus\
+                                [stimulus_index,:,1], marker='.',
+                                color=colors[stimulus_index],
+                                linestyle='solid',
+                                label=labels[stimulus_index])
+            axabstract.set_xlabel(units+' around '+trans+' transition')
+            axabstract.set_ylabel('P(lick|stimulus)')
+            axabstract.set_xlim([-half_window,half_window])
 
     axall.plot(xvec,context[:,0],',-c',label='vis')
     axall.plot(xvec,context[:,1],',-m',label='olf')
-    axabstract.plot(xvec,context[:,0],',-c',label='vis')
-    axabstract.plot(xvec,context[:,1],',-m',label='olf')
+    axall.plot(xvec,mismatch_error[:,0],',c',linestyle='dotted',label='vis_mis')
+    axall.plot(xvec,mismatch_error[:,1],',m',linestyle='dotted',label='olf_mis')
 
     if detailed_plots:
         axes[row,col].legend()
@@ -171,9 +177,12 @@ def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
     axall.legend()
     figall.tight_layout()
     
-    figabstract.tight_layout()
-    figabstract.savefig('RL_'+agent_type+'_'+trans+'.pdf')
-    figabstract.savefig('RL_'+agent_type+'_'+trans+'.svg')
+    if abstract_plots:
+        axabstract.plot(xvec,context[:,0],',-c',label='vis')
+        axabstract.plot(xvec,context[:,1],',-m',label='olf')
+        figabstract.tight_layout()
+        figabstract.savefig('RL_'+agent_type+'_'+trans+'.pdf')
+        figabstract.savefig('RL_'+agent_type+'_'+trans+'.svg')
 
 def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
     # use one of these environments,
@@ -294,12 +303,13 @@ if __name__ == "__main__":
     # train the RL agent on the task
     exp_step, block_vector_exp_compare, \
         reward_vector_exp_compare, stimulus_vector_exp_compare, \
-            action_vector_exp_compare, context_record = \
+            action_vector_exp_compare, context_record, mismatch_error_record = \
                 agent.train(steps)
 
     print('Q-values dict {state: context x action} = ',agent.Q_array)
 
     detailed_plots = False
+    abstract_plots = False
 
     ## obsolete - start
     #fig1 = plt.figure()
@@ -317,12 +327,12 @@ if __name__ == "__main__":
     average_reward_around_o2v_transition, \
         actionscount_to_stimulus_o2v, \
         probability_action_given_stimulus_o2v, \
-        context_o2v = \
+        context_o2v, mismatch_error_o2v = \
             process_transitions(exp_step, block_vector_exp_compare,
                                 reward_vector_exp_compare,
                                 stimulus_vector_exp_compare,
                                 action_vector_exp_compare,
-                                context_record,
+                                context_record, mismatch_error_record,
                                 O2V = True)
 
     if detailed_plots:
@@ -354,26 +364,28 @@ if __name__ == "__main__":
 
     plot_prob_actions_given_stimuli(probability_action_given_stimulus_o2v,
                                     mean_probability_action_given_stimulus_o2v,
-                                    context_o2v,
-                                    detailed_plots, agent_type=agent_type)
+                                    context_o2v, mismatch_error_o2v,
+                                    detailed_plots, abstract_plots,
+                                    agent_type=agent_type)
 
     # obtain the mean reward and action given stimulus around V2O transition
     # no need to pass above variables as they are not modified, only analysed
     average_reward_around_v2o_transition, \
         actionscount_to_stimulus_v2o, \
         probability_action_given_stimulus_v2o, \
-        context_v2o = \
+        context_v2o, mismatch_error_v2o = \
             process_transitions(exp_step, block_vector_exp_compare,
                                 reward_vector_exp_compare, 
                                 stimulus_vector_exp_compare,
                                 action_vector_exp_compare,
-                                context_record,
+                                context_record, mismatch_error_record,
                                 O2V = False)
 
     plot_prob_actions_given_stimuli(probability_action_given_stimulus_v2o,
                                     mean_probability_action_given_stimulus_v2o,
-                                    context_v2o,
-                                    detailed_plots, agent_type=agent_type,
+                                    context_v2o, mismatch_error_v2o,
+                                    detailed_plots, abstract_plots,
+                                    agent_type=agent_type,
                                     trans='V2O')
 
     plt.show()

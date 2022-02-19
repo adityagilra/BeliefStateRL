@@ -9,6 +9,11 @@ __pycache__/
 # C extensions
 *.so
 
+# plot / figs
+*.png
+*.pdf
+*.svg
+
 # Distribution / packaging
 .Python
 build/
