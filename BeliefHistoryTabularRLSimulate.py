@@ -83,12 +83,11 @@ def process_transitions(exp_step, block_vector_exp_compare,
             else:
                 second_trial_idx = transition + 2
                 correct_action = 0
-            print(O2V, stimulus_vector_exp_compare[second_trial_idx])
             # error in both contexts is taken into account -- np.abs() to neglect direction information
             if action_vector_exp_compare[second_trial_idx] == correct_action:
-                mismatch_by_perfectswitch[1].append( np.mean(np.abs(mismatch_error_record[transition:second_trial_idx])) )
+                mismatch_by_perfectswitch[1].append( np.abs(mismatch_error_record[second_trial_idx-1]) )
             else:
-                mismatch_by_perfectswitch[0].append( np.mean(np.abs(mismatch_error_record[transition:second_trial_idx])) )
+                mismatch_by_perfectswitch[0].append( np.abs(mismatch_error_record[second_trial_idx-1]) )
 
         context[window_start:window_end,:] += context_record[window_min:window_max,:]
         mismatch_error[window_start:window_end,:] += mismatch_error_record[window_min:window_max,:]
@@ -206,7 +205,6 @@ def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
         figabstract.savefig('RL_'+agent_type+'_'+trans+'.svg')
 
 def plot_mismatch_vs_perfectswitch(mismatch_by_perfectswitch_o2v, mismatch_by_perfectswitch_v2o):
-    print(mismatch_by_perfectswitch_o2v, mismatch_by_perfectswitch_v2o)
     fig, ax = plt.subplots(1,2)
     ax[0].bar( ['wrong switch','correct switch'],
                 [np.mean(mismatch_by_perfectswitch_o2v[0]),np.mean(mismatch_by_perfectswitch_o2v[1])],

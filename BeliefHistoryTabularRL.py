@@ -11,7 +11,7 @@ class BeliefHistoryTabularRL():
                 history=0,
                 beliefRL=True, belief_switching_rate=0.7, ACC_off_factor=1.,
                 weak_visual_factor = 1.,
-                context_error_noiseSD = 0.1,
+                context_error_noiseSD_factor = 2.,
                 exploration_is_modulated_by_context_prediction_error=False,
                 exploration_add_factor_for_context_prediction_error=8):
         self.env = env
@@ -73,7 +73,7 @@ class BeliefHistoryTabularRL():
                 exploration_add_factor_for_context_prediction_error
             
             # mismatch error (context prediction error) is noisy in experiments,
-            self.context_error_noiseSD = context_error_noiseSD
+            self.context_error_noiseSD_factor = context_error_noiseSD_factor
 
             # assume agent knows number of contexts before-hand (ideally, should learn!)
             self.n_contexts = 2
@@ -161,9 +161,16 @@ class BeliefHistoryTabularRL():
                         pass
                 else:
                     # agent chooses a context for action, based on current context probabilities
-                    context_assumed_now = \
-                        np.random.choice( range(self.n_contexts),\
-                                            p=self.context_belief_probabilities )
+                    
+                    # don't sampling the context from belief probabilities
+                    #  this sampling noise overshadows the noise added to context prediction error
+                    #context_assumed_now = \
+                    #    np.random.choice( range(self.n_contexts),\
+                    #                        p=self.context_belief_probabilities )
+                    
+                    # select the context with higher belief
+                    context_assumed_now = np.argmax(self.context_belief_probabilities)
+                    
                     if np.random.uniform() < self.exploration_rate:
                         action = self.env.action_space.sample()
                     else:
@@ -250,7 +257,10 @@ class BeliefHistoryTabularRL():
                     self.context_prediction_error = np.array((0.,0.))
 
                 # context prediction error (mismatch error) is noisy in experiments
-                self.context_prediction_error += self.context_error_noiseSD*np.random.normal()
+                # additive noise
+                #self.context_prediction_error += self.context_error_noiseSD*np.random.normal()
+                # multiplicative noise
+                self.context_prediction_error *= (1.+self.context_error_noiseSD_factor*np.random.normal())
 
                 # ACC encoding of prediction error can be reduced by a factor
                 #  that serves as a proxy for ACC silencing
