@@ -41,6 +41,7 @@ def process_transitions(exp_step, block_vector_exp_compare,
     actionscount_to_stimulus = np.zeros((6,half_window*2+1,2)) # 6 stimuli, 2 actions
     context = np.zeros((half_window*2+1,len(context_record[0])))
     mismatch_error = np.zeros((half_window*2+1,len(context_record[0])))
+    mismatch_by_perfectswitch = [[],[]]
     num_transitions_averaged = 0
     for transition in transitions:
         # take edge effects into account when taking a window around transition
@@ -75,6 +76,19 @@ def process_transitions(exp_step, block_vector_exp_compare,
             #print(stimulus_number,
             #        actionscount_to_stimulus[stimulus_number-1,half_window-5:half_window+5,0],
             #        actionscount_to_stimulus[stimulus_number-1,half_window-5:half_window+5,1])
+            
+            if O2V:
+                second_trial_idx = transition + 1
+                correct_action = 1
+            else:
+                second_trial_idx = transition + 2
+                correct_action = 0
+            print(O2V, stimulus_vector_exp_compare[second_trial_idx])
+            # error in both contexts is taken into account -- np.abs() to neglect direction information
+            if action_vector_exp_compare[second_trial_idx] == correct_action:
+                mismatch_by_perfectswitch[1].append( np.mean(np.abs(mismatch_error_record[transition:second_trial_idx])) )
+            else:
+                mismatch_by_perfectswitch[0].append( np.mean(np.abs(mismatch_error_record[transition:second_trial_idx])) )
 
         context[window_start:window_end,:] += context_record[window_min:window_max,:]
         mismatch_error[window_start:window_end,:] += mismatch_error_record[window_min:window_max,:]
@@ -95,7 +109,7 @@ def process_transitions(exp_step, block_vector_exp_compare,
     return average_reward_around_transition, \
                 actionscount_to_stimulus, \
                 probability_action_given_stimulus, \
-                context, mismatch_error
+                context, mismatch_error, mismatch_by_perfectswitch
 
 def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
                                         exp_mean_probability_action_given_stimulus,
@@ -117,10 +131,12 @@ def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
     xvec = range(-half_window,half_window+1)
     if detailed_plots:
         fig, axes = plt.subplots(2,3)
-    figall, axall = plt.subplots(1,1)
+    figall, axall = plt.subplots(1,2)
     #figall = plt.figure()
     #axall = figall.add_axes([0.1, 0.1, 0.9, 0.9])
-    axall.plot([0,0],[0,1],',k',linestyle='--')
+    # dotted vertical line for transition
+    axall[0].plot([0,0],[0,1],',k',linestyle='--')
+    axall[1].plot([0,0],[0,1],',k',linestyle='--')
     #colors = ['r','g','y','c','b','m']
     colors = ['b','r','b','r','g','y']
     labels = ['+v','-v','/+v','/-v','+o','-o']
@@ -143,18 +159,18 @@ def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
             axes[row,col].set_xlim([-half_window,half_window])
 
         # lick probability given stimuli all in one axes
-        axall.plot(xvec,exp_mean_probability_action_given_stimulus\
+        axall[0].plot(xvec,exp_mean_probability_action_given_stimulus\
                             [stimulus_index,:,1], marker='x',
                             color=colors[stimulus_index],
                             label=labels[stimulus_index])
-        axall.plot(xvec,probability_action_given_stimulus\
+        axall[0].plot(xvec,probability_action_given_stimulus\
                             [stimulus_index,:,1], marker='.',
                             color=colors[stimulus_index],
                             linestyle='dotted',
                             label=labels[stimulus_index])
-        axall.set_xlabel(units+' around '+trans+' transition')
-        axall.set_ylabel('P(lick|stimulus)')
-        axall.set_xlim([-half_window,half_window])
+        axall[0].set_xlabel(units+' around '+trans+' transition')
+        axall[0].set_ylabel('P(lick|stimulus)')
+        axall[0].set_xlim([-half_window,half_window])
 
         if abstract_plots:
             axabstract.plot(xvec,probability_action_given_stimulus\
@@ -166,15 +182,20 @@ def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
             axabstract.set_ylabel('P(lick|stimulus)')
             axabstract.set_xlim([-half_window,half_window])
 
-    axall.plot(xvec,context[:,0],',-c',label='vis')
-    axall.plot(xvec,context[:,1],',-m',label='olf')
-    axall.plot(xvec,mismatch_error[:,0],',c',linestyle='dotted',label='vis_mis')
-    axall.plot(xvec,mismatch_error[:,1],',m',linestyle='dotted',label='olf_mis')
+    # context beliefs and mismatch (context prediction error) signals
+    axall[1].plot(xvec,context[:,0],',-c',label='vis')
+    axall[1].plot(xvec,context[:,1],',-m',label='olf')
+    axall[1].plot(xvec,mismatch_error[:,0],',c',linestyle='dotted',label='vis_mis')
+    axall[1].plot(xvec,mismatch_error[:,1],',m',linestyle='dotted',label='olf_mis')
+    axall[1].set_xlabel(units+' around '+trans+' transition')
+    axall[1].set_ylabel('Belief prob (solid) and mismatch error (dotted)')
+    axall[1].set_xlim([-half_window,half_window])
 
     if detailed_plots:
         axes[row,col].legend()
         fig.subplots_adjust(wspace=0.5,hspace=0.5)
-    axall.legend()
+    axall[0].legend()
+    axall[1].legend()
     figall.tight_layout()
     
     if abstract_plots:
@@ -183,6 +204,19 @@ def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
         figabstract.tight_layout()
         figabstract.savefig('RL_'+agent_type+'_'+trans+'.pdf')
         figabstract.savefig('RL_'+agent_type+'_'+trans+'.svg')
+
+def plot_mismatch_vs_perfectswitch(mismatch_by_perfectswitch_o2v, mismatch_by_perfectswitch_v2o):
+    print(mismatch_by_perfectswitch_o2v, mismatch_by_perfectswitch_v2o)
+    fig, ax = plt.subplots(1,2)
+    ax[0].bar( ['wrong switch','correct switch'],
+                [np.mean(mismatch_by_perfectswitch_o2v[0]),np.mean(mismatch_by_perfectswitch_o2v[1])],
+                yerr=[np.std(mismatch_by_perfectswitch_o2v[0]),np.std(mismatch_by_perfectswitch_o2v[1])] )
+    ax[0].set_ylabel('mismatch error O2V')
+    ax[1].bar( ['wrong switch','correct switch'],
+                [np.mean(mismatch_by_perfectswitch_v2o[0]),np.mean(mismatch_by_perfectswitch_v2o[1])],
+                yerr=[np.std(mismatch_by_perfectswitch_v2o[0]),np.std(mismatch_by_perfectswitch_v2o[1])] )
+    ax[1].set_ylabel('mismatch error V2O')
+    fig.tight_layout()
 
 def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
     # use one of these environments,
@@ -256,7 +290,7 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
         #belief_switching_rate, epsilon, exploration_add_factor_for_context_prediction_error, alpha \
         #            = 0.54162102, 0.09999742, 8.2049604, 0.1
         belief_switching_rate, epsilon, exploration_add_factor_for_context_prediction_error, alpha \
-                    = 0.8, 0.1, 0, 0.1
+                    = 0.6, 0.1, 0, 0.1
 
         # choose one of the two below:
         #exploration_is_modulated_by_context_prediction_error = True
@@ -327,7 +361,7 @@ if __name__ == "__main__":
     average_reward_around_o2v_transition, \
         actionscount_to_stimulus_o2v, \
         probability_action_given_stimulus_o2v, \
-        context_o2v, mismatch_error_o2v = \
+        context_o2v, mismatch_error_o2v, mismatch_by_perfectswitch_o2v = \
             process_transitions(exp_step, block_vector_exp_compare,
                                 reward_vector_exp_compare,
                                 stimulus_vector_exp_compare,
@@ -373,7 +407,7 @@ if __name__ == "__main__":
     average_reward_around_v2o_transition, \
         actionscount_to_stimulus_v2o, \
         probability_action_given_stimulus_v2o, \
-        context_v2o, mismatch_error_v2o = \
+        context_v2o, mismatch_error_v2o, mismatch_by_perfectswitch_v2o = \
             process_transitions(exp_step, block_vector_exp_compare,
                                 reward_vector_exp_compare, 
                                 stimulus_vector_exp_compare,
@@ -387,5 +421,7 @@ if __name__ == "__main__":
                                     detailed_plots, abstract_plots,
                                     agent_type=agent_type,
                                     trans='V2O')
+
+    plot_mismatch_vs_perfectswitch(mismatch_by_perfectswitch_o2v, mismatch_by_perfectswitch_v2o)
 
     plt.show()
