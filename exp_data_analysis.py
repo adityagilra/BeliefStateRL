@@ -74,22 +74,35 @@ transition_index = 29
 # example access:
 #print(mouse_behaviour_data['ans']['control'][0,0]['sessionV2O'][0,0][2,7][0,0]['stimulus'])
 
+mouse_neural_data = scipyio.loadmat(
+                    "experiment_data/exported_imaging_data_class1_neurons.mat",
+                                    struct_as_record=True)
+mouse_neural_data = mouse_neural_data['dF'][0]
+# From Nick Cole: 
+#"""exported imaging data for class 1 (positive mismatch) and class 4 (negative mismatch) neurons.
+# These correspond to the behavioural data I exported from these imaging sessions:
+#  each has 13 cells (one per session), with each row corresponding to each switch from odour to visual, and each column corresponding to each neuron of that class
+#  (so a 5 x 4 array would be 5 switches and 4 neurons). There are two things I should point out about these that might not make sense:
+#  Not every session has mismatch neurons - I think of the 13 sessions 2 have no class 1 neurons and 2 have no class 4 neurons, these are the empty cells. ...."""
+
 reward_size=10
 punish_factor=0.5
 # the exp data doesn't contain blanks and end of trial cues as in the model task, so not taken into account
 #lick_without_reward_factor=0.2
 
-def get_exp_reward_around_transition(trans='O2V',ACC='control'):
+def get_exp_reward_around_transition(trans='O2V',ACC='control',
+                                        mice_list=None,sessions_list=None,):
     # ACC can be 'control' (without ACC silenced) or 'exp' (with ACC silenced)
     behaviour_data = mouse_behaviour_data['expData'][ACC][0,0]['mouse'+trans][0,0]
     window = behaviour_data[0,0][0,0]['stimulus'].shape[1]
     number_of_mice = len(mouse_behaviour_data['expData'][ACC][0,0]['mouse'+trans][0,0][0])
+    if mice_list is None: mice_list = range(number_of_mice)
     mice_average_reward_around_transtion = np.zeros((number_of_mice,window))
     across_mice_average_reward = np.zeros(window)
     mice_actionscount_to_stimulus = np.zeros((number_of_mice,6,window,2)) # 6 stimuli, 2 actions
     mice_actionscount_to_stimulus_trials = np.zeros((number_of_mice,6,window,2)) # 6 stimuli, 2 actions
 
-    for mouse_number in range(number_of_mice):
+    for mouse_number in mice_list:
         # steps around transitions for one mouse
         # both these numpy arrays of doubles have size T x window,
         #  where T are the number of transitions
@@ -129,28 +142,29 @@ def get_exp_reward_around_transition(trans='O2V',ACC='control'):
 
         ######### actions given stimuli around transition
         for stimulus_index in range(6):
-            # bitwise and takes precedence over equality testing, so need brackets
+            # `bitwise and` takes precedence over equality testing, so need brackets
             # stimuli are saved in experiment as 1 to 6, while stimulus_index goes from 0 to 5
             #  transition_corrects encodes 0 as incorrect, 1 as correct response
             #  I transform to counts of nolicks, and counts of licks
             if stimulus_index in (0,4): lick_to_correct = (0,1)
             else: lick_to_correct = (1,0)
 
-            ##### steps around transition
-            ##### not all time steps will have a particular stimulus!
-            mice_actionscount_to_stimulus[mouse_number,stimulus_index,:,0] += \
-                   np.sum((transition_stimuli==stimulus_index+1) \
-                            & (transition_corrects==lick_to_correct[0]),
-                        axis=0 )
-            mice_actionscount_to_stimulus[mouse_number,stimulus_index,:,1] += \
-                   np.sum((transition_stimuli==stimulus_index+1) \
-                            & (transition_corrects==lick_to_correct[1]),
-                        axis=0 )
+            if sessions_list is None: sessions_list_thismouse = range(transition_stimuli.shape[0])
+            else: sessions_list_thismouse = sessions_list
 
-            ##### trials around transition
-            ##### convert from steps to trials for each session, while maintaining transition index at the center
-            for session_index in range(transition_stimuli.shape[0]):
-                # we show time steps involving visual stimuli only or olfactory stimuli only
+            for session_index in sessions_list_thismouse:
+                ##### steps around transition
+                ##### not all time steps will have a particular stimulus!
+                mice_actionscount_to_stimulus[mouse_number,stimulus_index,:,0] += \
+                       (transition_stimuli[session_index,:]==stimulus_index+1) \
+                                & (transition_corrects[session_index,:]==lick_to_correct[0])
+                mice_actionscount_to_stimulus[mouse_number,stimulus_index,:,1] += \
+                       (transition_stimuli[session_index,:]==stimulus_index+1) \
+                                & (transition_corrects[session_index,:]==lick_to_correct[1])
+
+                ##### trials around transition
+                ##### convert from steps to trials for each session, while maintaining transition index at the center
+                # we pick time steps involving visual stimuli only or olfactory stimuli only
                 #  if stimulus_index denotes a visual or olfactory stimulus respectively
                 if stimulus_index in (0,1): relevant_stimuli = (1,2)
                 elif stimulus_index in (2,3): relevant_stimuli = (3,4)
@@ -257,6 +271,11 @@ def plot_prob_actions_given_stimuli(units='steps', trans='O2V'):
     fig.subplots_adjust(wspace=0.5,hspace=0.5)
     axall.legend()
     figall.tight_layout()
+
+def read_neural_mismatch():
+    session_number = 0
+    for session_data in mouse_neural_data:
+        pass            
 
 if __name__ == "__main__":
     # choose control for ACC not inhibited, exp for ACC inhibited

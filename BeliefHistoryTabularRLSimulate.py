@@ -287,8 +287,14 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
         # obtained by 3-param fit using brute minimize mse with nan-errors (alpha fixed at 0.1)
         #belief_switching_rate, epsilon, exploration_add_factor_for_context_prediction_error, alpha \
         #            = 0.54162102, 0.09999742, 8.2049604, 0.1
-        belief_switching_rate, epsilon, exploration_add_factor_for_context_prediction_error, alpha \
-                    = 0.6, 0.1, 0, 0.1
+        #belief_switching_rate, epsilon, exploration_add_factor_for_context_prediction_error, alpha \
+        #            = 0.6, 0.1, 0, 0.1
+        # obtained by 2-param fit -- note: switching rate is at the border of allowed, so redo
+        belief_switching_rate, context_error_noiseSD_factor \
+                    = 0.285, 2.1
+                    #= 0.490625, 3.065625
+        epsilon, exploration_add_factor_for_context_prediction_error, alpha \
+                    = 0.1, 0, 0.1
 
         # choose one of the two below:
         #exploration_is_modulated_by_context_prediction_error = True
@@ -304,6 +310,7 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
                                         belief_switching_rate=belief_switching_rate,
                                         ACC_off_factor = ACC_off_factor,
                                         alpha=alpha, epsilon=epsilon, seed=seed,
+                                        context_error_noiseSD_factor = context_error_noiseSD_factor,
                                         exploration_is_modulated_by_context_prediction_error=\
                                             exploration_is_modulated_by_context_prediction_error,
                                         exploration_add_factor_for_context_prediction_error=\
@@ -376,6 +383,16 @@ if __name__ == "__main__":
         plt.xlabel('time steps around olfactory to visual transition')
         plt.ylabel('average reward on time step')
 
+    # choose one of the two below, either load exp data for 1 session only, or for all mice, all sessions.
+    load_a_session = True
+    #load_a_session = False
+    if load_a_session:
+        mice_list = [0]
+        sessions_list = [0]
+    else:
+        mice_list = None
+        sessions_list = None
+
     # read experimental data
     print("reading experimental data")
     number_of_mice, across_mice_average_reward_o2v, \
@@ -384,14 +401,16 @@ if __name__ == "__main__":
         mice_actionscount_to_stimulus_trials_o2v, \
         mice_probability_action_given_stimulus_o2v, \
         mean_probability_action_given_stimulus_o2v = \
-            get_exp_reward_around_transition(trans='O2V',ACC=ACC_str)
+            get_exp_reward_around_transition(trans='O2V',ACC=ACC_str,
+                                            mice_list=mice_list,sessions_list=sessions_list)
     number_of_mice, across_mice_average_reward_v2o, \
         mice_average_reward_around_transtion_v2o, \
         mice_actionscount_to_stimulus_v2o, \
         mice_actionscount_to_stimulus_trials_v2o, \
         mice_probability_action_given_stimulus_v2o, \
         mean_probability_action_given_stimulus_v2o = \
-            get_exp_reward_around_transition(trans='V2O',ACC=ACC_str)
+            get_exp_reward_around_transition(trans='V2O',ACC=ACC_str,
+                                            mice_list=mice_list,sessions_list=sessions_list)
     print("finished reading experimental data.")
 
     plot_prob_actions_given_stimuli(probability_action_given_stimulus_o2v,

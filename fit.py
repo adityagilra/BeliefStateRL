@@ -18,15 +18,17 @@ def meansquarederror(parameters,
     if agent_type == 'belief':
         belief_switching_rate = parameters[0]
         agent.belief_switching_rate = belief_switching_rate
-        exploration_rate = parameters[1]
-        agent.epsilon = exploration_rate
+        context_error_noiseSD_factor = parameters[1]
+        agent.context_error_noiseSD_factor = context_error_noiseSD_factor
+        #exploration_rate = parameters[1]
+        #agent.epsilon = exploration_rate
         #learning_rate = parameters[2]
         #agent.alpha = learning_rate
         #belief_exploration_add_factor = parameters[2]
         #agent.belief_exploration_add_factor = \
         #        belief_exploration_add_factor
-        weak_visual_factor = parameters[2]
-        agent.weak_visual_factor = weak_visual_factor
+        #weak_visual_factor = parameters[2]
+        #agent.weak_visual_factor = weak_visual_factor
     else:
         exploration_rate = parameters[0]
         learning_rate = parameters[1]
@@ -43,7 +45,7 @@ def meansquarederror(parameters,
     # train the RL agent on the task
     exp_step, block_vector_exp_compare, \
         reward_vector_exp_compare, stimulus_vector_exp_compare, \
-            action_vector_exp_compare, context_record = \
+            action_vector_exp_compare, context_record, mismatch_error_record = \
                 agent.train(steps)
 
     # obtain the mean reward and action given stimulus around O2V transition
@@ -51,12 +53,12 @@ def meansquarederror(parameters,
     average_reward_around_o2v_transition, \
         actionscount_to_stimulus_o2v, \
         probability_action_given_stimulus_o2v, \
-        context_o2v = \
+        context_o2v, mismatch_error_o2v, mismatch_by_perfectswitch_o2v = \
             process_transitions(exp_step, block_vector_exp_compare,
                                 reward_vector_exp_compare,
                                 stimulus_vector_exp_compare,
                                 action_vector_exp_compare,
-                                context_record,
+                                context_record, mismatch_error_record,
                                 O2V = True)
 
     # obtain the mean reward and action given stimulus around V2O transition
@@ -64,12 +66,12 @@ def meansquarederror(parameters,
     average_reward_around_v2o_transition, \
         actionscount_to_stimulus_v2o, \
         probability_action_given_stimulus_v2o, \
-        context_v2o = \
+        context_v2o, mismatch_error_v2o, mismatch_by_perfectswitch_v2o = \
             process_transitions(exp_step, block_vector_exp_compare,
                                 reward_vector_exp_compare,
                                 stimulus_vector_exp_compare,
                                 action_vector_exp_compare,
-                                context_record,
+                                context_record, mismatch_error_record,
                                 O2V = False)
 
     # replace nan-s by -0.5 in agent behaviour (already done for experiment)
@@ -129,6 +131,16 @@ if __name__ == "__main__":
         ACC_off_factor = 1.0 # uninhibited ACC
         ACC_str = 'control'
 
+    # choose one of the two below, either fit a session only, or all mice, all sessions.
+    fit_a_session = True
+    #fit_a_session = False
+    if fit_a_session:
+        mice_list = [0]
+        sessions_list = [0]
+    else:
+        mice_list = None
+        sessions_list = None
+    
     # read experimental data
     print("reading experimental data")
     number_of_mice, across_mice_average_reward_o2v, \
@@ -137,14 +149,16 @@ if __name__ == "__main__":
         mice_actionscount_to_stimulus_trials_o2v, \
         mice_probability_action_given_stimulus_o2v, \
         mean_probability_action_given_stimulus_o2v = \
-            get_exp_reward_around_transition(trans='O2V',ACC=ACC_str)
+            get_exp_reward_around_transition(trans='O2V',ACC=ACC_str,
+                                            mice_list=mice_list,sessions_list=sessions_list)
     number_of_mice, across_mice_average_reward_v2o, \
         mice_average_reward_around_transtion_v2o, \
         mice_actionscount_to_stimulus_v2o, \
         mice_actionscount_to_stimulus_trials_v2o, \
         mice_probability_action_given_stimulus_v2o, \
         mean_probability_action_given_stimulus_v2o = \
-            get_exp_reward_around_transition(trans='V2O',ACC=ACC_str)
+            get_exp_reward_around_transition(trans='V2O',ACC=ACC_str,
+                                            mice_list=mice_list,sessions_list=sessions_list)
     print("finished reading experimental data.")
 
     # replace nan-s by -0.5 in mouse behaviour (done for agent in fitting)
@@ -177,20 +191,23 @@ if __name__ == "__main__":
 
     if agent_type == 'belief':
         belief_switching_rate_start = 0.7
-        exploration_rate_start = 0.1
+        #exploration_rate_start = 0.1
         #learning_rate_start = 0.1
         #parameters = (belief_switching_rate_start,
         #                exploration_rate_start, learning_rate_start)
         #ranges = ((0.5,0.9),(0.1,0.5),(0.1,0.8))
         #bounds_obj = Bounds((0.5,0.,0.),(0.9,1.,1.))
         #belief_exploration_add_factor_start = 8
-        weak_visual_factor_start = 0.3
+        #weak_visual_factor_start = 0.3
+        context_error_noiseSD_factor_start = 2
         parameters = (belief_switching_rate_start,
-                        exploration_rate_start,
-                        weak_visual_factor_start)
+                        context_error_noiseSD_factor_start)
+                        #exploration_rate_start,
+                        #weak_visual_factor_start)
                         #belief_exploration_add_factor_start)
         #ranges = ((0.5,0.9),(0.1,0.4),(3,10))
-        ranges = ((0.5,0.9),(0.1,0.4),(0.1,0.5))
+        #ranges = ((0.5,0.9),(0.1,0.4),(0.1,0.5))
+        ranges = ((0.3,0.9),(1.,5.))
     elif agent_type == 'basic':
         exploration_rate_start = 0.1
         learning_rate_start = 0.1
