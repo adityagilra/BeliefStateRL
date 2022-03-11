@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import scipy.io as scipyio
 import sys
 
-# reproducible random number generation
+# to have reproducible random number generation
 np.random.seed(1)
 
 # Obsolete -- see Nick's new data file aligned at transitions below
@@ -74,16 +74,28 @@ transition_index = 29
 # example access:
 #print(mouse_behaviour_data['ans']['control'][0,0]['sessionV2O'][0,0][2,7][0,0]['stimulus'])
 
+#================ behaviour and neural data ==================
+
 mouse_neural_data = scipyio.loadmat(
                     "experiment_data/exported_imaging_data_class1_neurons.mat",
                                     struct_as_record=True)
-mouse_neural_data = mouse_neural_data['dF'][0]
+mouse_neural_mismatch = mouse_neural_data['dF']['expResponses'][0,0][0]
+mouse_correct_switch = mouse_neural_data['dF']['correctSwitch'][0,0][0]
 # From Nick Cole: 
 #"""exported imaging data for class 1 (positive mismatch) and class 4 (negative mismatch) neurons.
 # These correspond to the behavioural data I exported from these imaging sessions:
 #  each has 13 cells (one per session), with each row corresponding to each switch from odour to visual, and each column corresponding to each neuron of that class
 #  (so a 5 x 4 array would be 5 switches and 4 neurons). There are two things I should point out about these that might not make sense:
 #  Not every session has mismatch neurons - I think of the 13 sessions 2 have no class 1 neurons and 2 have no class 4 neurons, these are the empty cells. ...."""
+# Imaging data: rows = switches, columns = mismatch neurons (so a 4 x 6 array is the mean mismatch response amplitude for the same 4 switches over the 6 neurons in that session that are class 1 or class 4 mismatch neurons, depending on which dataset it is)
+# Imaging data has two fields: 'expResponses' is the mismatch response amplitudes for each mismatch neuron, in the format mentioned earlier. 'correctSwitch' is what you asked for, it's a logical array with one value for each switch in the session. If 1 it means that the trials after that mismatch trial was correct
+
+# Behavioural data: rows = switches, columns = timepoints (so a 4 x 61 array is 4 switches with 61 timepoints, with timepoint 31 being the first stimulus after the switch)
+mouse_behaviour_for_neural_data = scipyio.loadmat(
+                    "experiment_data/exported_behavioural_data_from_imaging_sessions.mat",
+                                    struct_as_record=True)
+
+#==============================================================
 
 reward_size=10
 punish_factor=0.5
@@ -272,10 +284,24 @@ def plot_prob_actions_given_stimuli(units='steps', trans='O2V'):
     axall.legend()
     figall.tight_layout()
 
-def read_neural_mismatch():
-    session_number = 0
-    for session_data in mouse_neural_data:
-        pass            
+
+def analyse_neural_mismatch():
+    print('mismatch vs in/correct O2V transitions')
+    mismatches = [[],[]]
+    for session_idx,session_data in enumerate(mouse_neural_mismatch):
+        print('sess num: ',session_idx)
+        if len(session_data[0])>0: # some sessions have no mismatch neurons
+            print('num transitions =',len(session_data),', num mismatch neurons =', len(session_data[0]))
+            correct_transition_idxs = (mouse_correct_switch[session_idx][0][0]==1)
+            mean_mismatch_for_wrong_transitions = np.mean(session_data[~correct_transition_idxs,:],axis=1)
+            mean_mismatch_for_correct_transitions = np.mean(session_data[correct_transition_idxs,:],axis=1)
+            print('mismatch_for_wrong_transitions =',mean_mismatch_for_wrong_transitions)
+            print('mismatch_for_correct_transitions =',mean_mismatch_for_correct_transitions)
+            if len(mean_mismatch_for_wrong_transitions)>0:
+                mismatches[0].extend(mean_mismatch_for_wrong_transitions[0])
+            if len(mean_mismatch_for_correct_transitions)>0:
+                mismatches[1].extend(mean_mismatch_for_correct_transitions[0])
+    return mismatches
 
 if __name__ == "__main__":
     # choose control for ACC not inhibited, exp for ACC inhibited
@@ -313,5 +339,12 @@ if __name__ == "__main__":
             get_exp_reward_around_transition(trans='V2O',ACC=ACC)
 
     plot_prob_actions_given_stimuli(trans='V2O')
+    
+    mismatches_o2v = analyse_neural_mismatch()
+    fig, ax = plt.subplots(1,1)
+    ax.bar( ['wrong switch','correct switch'],
+                [np.mean(mismatches_o2v[0]),np.mean(mismatches_o2v[1])],
+                yerr=[np.std(mismatches_o2v[0]),np.std(mismatches_o2v[1])] )
+    ax.set_ylabel('mismatch error O2V')
     
     plt.show()
