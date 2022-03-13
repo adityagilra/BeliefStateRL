@@ -289,9 +289,6 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
         #belief_switching_rate, epsilon, exploration_add_factor_for_context_prediction_error, alpha \
         #            = 0.52291667, 0.10208333, 8.146875, 0.1
 
-        # obtained by 3-param fit using brute minimize mse with nan-errors (alpha fixed at 0.1)
-        #belief_switching_rate, epsilon, exploration_add_factor_for_context_prediction_error, alpha \
-        #            = 0.54162102, 0.09999742, 8.2049604, 0.1
 
         # choose whether context_sampling is True or False below
         # source of noise in switching i.e. after a transition is due to
@@ -301,9 +298,16 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
         #context_sampling = False
         # could use both by setting context_sampling=True and a non-zero context_error_noiseSD_factor!
         if context_sampling:
-            belief_switching_rate, epsilon, exploration_add_factor_for_context_prediction_error, alpha \
-                        = 0.6, 0.1, 0, 0.1
             context_error_noiseSD_factor = 0.            
+            #belief_switching_rate, epsilon, exploration_add_factor_for_context_prediction_error, alpha \
+            #            = 0.6, 0.1, 0, 0.1
+
+            # obtained by 3-param fit using brute minimize mse
+            #  with nan-errors i.e. nan-s matched with nan-s, else error ~ 1 per nan
+            #  alpha fixed at 0.1 for the fitting
+            # params used for CoSyNe abstract
+            belief_switching_rate, epsilon, exploration_add_factor_for_context_prediction_error, alpha \
+                        = 0.54162102, 0.09999742, 8.2049604, 0.1
         else:
             # obtained by 2-param fit -- note: switching rate is at the border of allowed, so redo
             belief_switching_rate, context_error_noiseSD_factor \
@@ -313,8 +317,8 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
                         = 0.1, 0, 0.1
 
         # choose one of the two below:
-        #exploration_is_modulated_by_context_prediction_error = True
-        exploration_is_modulated_by_context_prediction_error = False
+        exploration_is_modulated_by_context_prediction_error = True
+        #exploration_is_modulated_by_context_prediction_error = False
         if exploration_is_modulated_by_context_prediction_error:
             # keep exploration & learning always on
             #  for noise and belief uncertainty driven exploration
@@ -365,7 +369,7 @@ if __name__ == "__main__":
     print('Q-values dict {state: context x action} = ',agent.Q_array)
 
     detailed_plots = False
-    abstract_plots = False
+    abstract_plots = True#False
 
     ## obsolete - start
     #fig1 = plt.figure()
