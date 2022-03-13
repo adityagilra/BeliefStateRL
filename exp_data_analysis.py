@@ -77,7 +77,7 @@ transition_index = 29
 #================ neural data and related behaviour ==================
 
 mouse_neural_data = scipyio.loadmat(
-                    "experiment_data/exported_imaging_data_class1_neurons.mat",
+                    "experiment_data/exported_imaging_data_class1_neurons_v2.mat",
                                     struct_as_record=True)
 mouse_neural_mismatch = mouse_neural_data['dF']['expResponses'][0,0][0]
 mouse_correct_switch = mouse_neural_data['dF']['correctSwitch'][0,0][0]
