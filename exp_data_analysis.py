@@ -74,7 +74,7 @@ transition_index = 29
 # example access:
 #print(mouse_behaviour_data['ans']['control'][0,0]['sessionV2O'][0,0][2,7][0,0]['stimulus'])
 
-#================ behaviour and neural data ==================
+#================ neural data and related behaviour ==================
 
 mouse_neural_data = scipyio.loadmat(
                     "experiment_data/exported_imaging_data_class1_neurons.mat",
@@ -286,22 +286,53 @@ def plot_prob_actions_given_stimuli(units='steps', trans='O2V'):
 
 
 def analyse_neural_mismatch():
+    ACC = 'control'
+    trans = 'O2V'
+    behaviour_data = mouse_behaviour_for_neural_data['expData'][ACC][0,0]['mouse'+trans][0,0]
+    window = behaviour_data[0,0][0,0]['stimulus'].shape[1]
+    #number_of_mice = len(mouse_behaviour_for_neural_data['expData'][ACC][0,0]['mouse'+trans][0,0][0])
+    # number of mice (or is it number of sessions?) is 13 in the behaviour data,
+    #  and number of sessions is also 13 in the neural data,
+    # but number of transitions is much less in the neural data
+    
+    number_of_sessions = len(mouse_neural_mismatch)
+    print('num sessions =',number_of_sessions)
+
     print('mismatch vs in/correct O2V transitions')
     mismatches = [[],[]]
-    for session_idx,session_data in enumerate(mouse_neural_mismatch):
-        print('sess num: ',session_idx)
+    mismatches_flat = [[],[]]
+    valid_sessions = []
+
+    for session_idx in range(number_of_sessions):
+        print('session num: ',session_idx)
+        session_data = mouse_neural_mismatch[session_idx]
+
+        # the behavioural data has a lot more transitions compared to the number in the neural data
+        #transition_corrects = behaviour_data[0,session_idx][0,0]['correct']
+        #print(transition_corrects)
+        # transitions from neural data (lot less in number than behavioural data?!)
+        transition_corrects = mouse_correct_switch[session_idx]
+
         if len(session_data[0])>0: # some sessions have no mismatch neurons
             print('num transitions =',len(session_data),', num mismatch neurons =', len(session_data[0]))
-            correct_transition_idxs = (mouse_correct_switch[session_idx][0][0]==1)
+            correct_transition_idxs = (mouse_correct_switch[session_idx][0]==1)
+            print('correct transition idxs =',correct_transition_idxs)
             mean_mismatch_for_wrong_transitions = np.mean(session_data[~correct_transition_idxs,:],axis=1)
             mean_mismatch_for_correct_transitions = np.mean(session_data[correct_transition_idxs,:],axis=1)
             print('mismatch_for_wrong_transitions =',mean_mismatch_for_wrong_transitions)
             print('mismatch_for_correct_transitions =',mean_mismatch_for_correct_transitions)
-            if len(mean_mismatch_for_wrong_transitions)>0:
-                mismatches[0].extend(mean_mismatch_for_wrong_transitions[0])
-            if len(mean_mismatch_for_correct_transitions)>0:
-                mismatches[1].extend(mean_mismatch_for_correct_transitions[0])
-    return mismatches
+            if len(mean_mismatch_for_wrong_transitions)==0:
+                mean_mismatch_for_wrong_transitions = [0]
+            mismatches[0].append(mean_mismatch_for_wrong_transitions)
+            mismatches_flat[0].extend(mean_mismatch_for_wrong_transitions)
+            if len(mean_mismatch_for_correct_transitions)==0:
+                mean_mismatch_for_correct_transitions = [0]
+            mismatches[1].append(mean_mismatch_for_correct_transitions)
+            mismatches_flat[1].extend(mean_mismatch_for_correct_transitions)
+            valid_sessions.append(session_idx)
+        print()
+
+    return mismatches, mismatches_flat, valid_sessions
 
 if __name__ == "__main__":
     # choose control for ACC not inhibited, exp for ACC inhibited
@@ -340,11 +371,23 @@ if __name__ == "__main__":
 
     plot_prob_actions_given_stimuli(trans='V2O')
     
-    mismatches_o2v = analyse_neural_mismatch()
+    mismatches_o2v, mismatches_flat_o2v, sessions_o2v = analyse_neural_mismatch()
     fig, ax = plt.subplots(1,1)
     ax.bar( ['wrong switch','correct switch'],
-                [np.mean(mismatches_o2v[0]),np.mean(mismatches_o2v[1])],
-                yerr=[np.std(mismatches_o2v[0]),np.std(mismatches_o2v[1])] )
+                [np.mean(mismatches_flat_o2v[0]),np.mean(mismatches_flat_o2v[1])],
+                yerr=[np.std(mismatches_flat_o2v[0]),np.std(mismatches_flat_o2v[1])] )
     ax.set_ylabel('mismatch error O2V')
+
+    num_sessions = len(mismatches_o2v[0])
+    fig, axes = plt.subplots(2,num_sessions//2+1,figsize=(15,6))
+    for session_idx in range(num_sessions):
+        row = session_idx % 2
+        col = session_idx // 2
+        axes[row,col].bar( ['wrong switch','correct switch'],
+                [np.mean(mismatches_o2v[0][session_idx]),np.mean(mismatches_o2v[1][session_idx])],
+                yerr=[np.std(mismatches_o2v[0][session_idx]),np.std(mismatches_o2v[1][session_idx])] )
+        axes[row,col].set_title('session '+str(sessions_o2v[session_idx]))
+    #fig.suptitle('mismatch error O2V vs (in)correct switch')
+    fig.tight_layout()
     
     plt.show()

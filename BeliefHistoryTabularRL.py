@@ -10,8 +10,8 @@ class BeliefHistoryTabularRL():
                 learning_time_steps=100000, recording_time_steps=100000,
                 history=0,
                 beliefRL=True, belief_switching_rate=0.7, ACC_off_factor=1.,
-                weak_visual_factor = 1.,
-                context_error_noiseSD_factor = 2.,
+                weak_visual_factor = 1., context_sampling = True,
+                context_error_noiseSD_factor = 0.,
                 exploration_is_modulated_by_context_prediction_error=False,
                 exploration_add_factor_for_context_prediction_error=8):
         self.env = env
@@ -72,7 +72,10 @@ class BeliefHistoryTabularRL():
             self.exploration_add_factor_for_context_prediction_error = \
                 exploration_add_factor_for_context_prediction_error
             
-            # mismatch error (context prediction error) is noisy in experiments,
+            # whether to sample context from context belief probabilities
+            #  or just choose the one with largest probability
+            self.context_sampling = context_sampling
+            # mismatch error (context prediction error) might be noisy in experiments,
             self.context_error_noiseSD_factor = context_error_noiseSD_factor
 
             # assume agent knows number of contexts before-hand (ideally, should learn!)
@@ -160,16 +163,18 @@ class BeliefHistoryTabularRL():
                         # to implement
                         pass
                 else:
-                    # agent chooses a context for action, based on current context probabilities
+                    # agent chooses a context for action, based on current context belief / probabilities
                     
-                    # don't sampling the context from belief probabilities
-                    #  this sampling noise overshadows the noise added to context prediction error
-                    #context_assumed_now = \
-                    #    np.random.choice( range(self.n_contexts),\
-                    #                        p=self.context_belief_probabilities )
-                    
-                    # select the context with higher belief
-                    context_assumed_now = np.argmax(self.context_belief_probabilities)
+                    if self.context_sampling:
+                        # sample the current context from belief probabilities
+                        #  could be a proxy for a neural decision making process
+                        #  this sampling noise typically overshadows the noise added to context prediction error
+                        context_assumed_now = \
+                            np.random.choice( range(self.n_contexts),\
+                                                p=self.context_belief_probabilities )
+                    else:
+                        # select the context with higher belief
+                        context_assumed_now = np.argmax(self.context_belief_probabilities)
                     
                     if np.random.uniform() < self.exploration_rate:
                         action = self.env.action_space.sample()
@@ -230,7 +235,7 @@ class BeliefHistoryTabularRL():
                 """
                 # Below method of detecting context doesn't match well the experimental p(lick|rewarded visual) in odor block,
                 #  or if you get set weak_visual_factor low to match, then it makes the O2V transition slow:
-                #  see my OneNote notes of 17-18 Feb
+                #  see my OneNote notes of 17-18 Feb 2022
                 if self.previous_observation in self.odor_observations:
                     # definitely an olfactory context
                     self.context_prediction_error = np.array((0.,1.)) - context_effective
@@ -353,7 +358,7 @@ class BeliefHistoryTabularRL():
                 ###### update context belief by context prediction error
                 ###### Ideally, I should be doing a Bayesian update,
                 ######  but this seems easier to implement bio-plausibly,
-                ######  and will be similar to, possibly indistinguishable from, a Bayesian update
+                ######  and will be similar to (or even possibly indistinguishable from) a Bayesian update
                 self.context_belief_probabilities += \
                         self.belief_switching_rate * self.context_prediction_error
 

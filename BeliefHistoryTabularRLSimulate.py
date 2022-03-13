@@ -275,26 +275,42 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
         # no history, just belief in one of two contexts - two Q tables
         steps = 500000
         #steps = 2000000
+
         # obtained by 1-param fit using powell's minimize mse
         #belief_switching_rate = 0.76837728
+
         # obtained by 3-param fit using powell's minimize mse -- out of bounds - gives nans
         #belief_switching_rate, epsilon, alpha = 1.694975  , 0.48196603, 2.1
+
         # obtained by 3-param fit using brute minimize mse
         #belief_switching_rate, epsilon, alpha = 0.6, 0.1, 0.105
+
         # obtained by 3-param fit using brute minimize mse (alpha fixed at 0.1)
         #belief_switching_rate, epsilon, exploration_add_factor_for_context_prediction_error, alpha \
         #            = 0.52291667, 0.10208333, 8.146875, 0.1
+
         # obtained by 3-param fit using brute minimize mse with nan-errors (alpha fixed at 0.1)
         #belief_switching_rate, epsilon, exploration_add_factor_for_context_prediction_error, alpha \
         #            = 0.54162102, 0.09999742, 8.2049604, 0.1
-        #belief_switching_rate, epsilon, exploration_add_factor_for_context_prediction_error, alpha \
-        #            = 0.6, 0.1, 0, 0.1
-        # obtained by 2-param fit -- note: switching rate is at the border of allowed, so redo
-        belief_switching_rate, context_error_noiseSD_factor \
-                    = 0.285, 2.1
-                    #= 0.490625, 3.065625
-        epsilon, exploration_add_factor_for_context_prediction_error, alpha \
-                    = 0.1, 0, 0.1
+
+        # choose whether context_sampling is True or False below
+        # source of noise in switching i.e. after a transition is due to
+        #  sampling current context from the context belief probability distribution
+        context_sampling = True
+        #  noise in context error signal in the ACC
+        #context_sampling = False
+        # could use both by setting context_sampling=True and a non-zero context_error_noiseSD_factor!
+        if context_sampling:
+            belief_switching_rate, epsilon, exploration_add_factor_for_context_prediction_error, alpha \
+                        = 0.6, 0.1, 0, 0.1
+            context_error_noiseSD_factor = 0.            
+        else:
+            # obtained by 2-param fit -- note: switching rate is at the border of allowed, so redo
+            belief_switching_rate, context_error_noiseSD_factor \
+                        = 0.285, 2.1
+                        #= 0.490625, 3.065625
+            epsilon, exploration_add_factor_for_context_prediction_error, alpha \
+                        = 0.1, 0, 0.1
 
         # choose one of the two below:
         #exploration_is_modulated_by_context_prediction_error = True
@@ -310,6 +326,7 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
                                         belief_switching_rate=belief_switching_rate,
                                         ACC_off_factor = ACC_off_factor,
                                         alpha=alpha, epsilon=epsilon, seed=seed,
+                                        context_sampling = context_sampling,
                                         context_error_noiseSD_factor = context_error_noiseSD_factor,
                                         exploration_is_modulated_by_context_prediction_error=\
                                             exploration_is_modulated_by_context_prediction_error,
@@ -384,8 +401,8 @@ if __name__ == "__main__":
         plt.ylabel('average reward on time step')
 
     # choose one of the two below, either load exp data for 1 session only, or for all mice, all sessions.
-    load_a_session = True
-    #load_a_session = False
+    #load_a_session = True
+    load_a_session = False
     if load_a_session:
         mice_list = [0]
         sessions_list = [0]
