@@ -181,14 +181,15 @@ def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
             axabstract.set_ylabel('P(lick|stimulus)')
             axabstract.set_xlim([-half_window,half_window])
 
-    # context beliefs and mismatch (context prediction error) signals
-    axall[1].plot(xvec,context[:,0],',-c',label='vis')
-    axall[1].plot(xvec,context[:,1],',-m',label='olf')
-    axall[1].plot(xvec,mismatch_error[:,0],',c',linestyle='dotted',label='vis_mis')
-    axall[1].plot(xvec,mismatch_error[:,1],',m',linestyle='dotted',label='olf_mis')
-    axall[1].set_xlabel(units+' around '+trans+' transition')
-    axall[1].set_ylabel('Belief prob (solid) and mismatch error (dotted)')
-    axall[1].set_xlim([-half_window,half_window])
+    if agent_type=='belief':
+        # context beliefs and mismatch (context prediction error) signals
+        axall[1].plot(xvec,context[:,0],',-c',label='vis')
+        axall[1].plot(xvec,context[:,1],',-m',label='olf')
+        axall[1].plot(xvec,mismatch_error[:,0],',c',linestyle='dotted',label='vis_mis')
+        axall[1].plot(xvec,mismatch_error[:,1],',m',linestyle='dotted',label='olf_mis')
+        axall[1].set_xlabel(units+' around '+trans+' transition')
+        axall[1].set_ylabel('Belief prob (solid) and mismatch error (dotted)')
+        axall[1].set_xlim([-half_window,half_window])
 
     if detailed_plots:
         axes[row,col].legend()
@@ -198,8 +199,9 @@ def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
     figall.tight_layout()
     
     if abstract_plots:
-        axabstract.plot(xvec,context[:,0],',-c',label='vis')
-        axabstract.plot(xvec,context[:,1],',-m',label='olf')
+        if agent_type=='belief':
+            axabstract.plot(xvec,context[:,0],',-c',label='vis')
+            axabstract.plot(xvec,context[:,1],',-m',label='olf')
         figabstract.tight_layout()
         figabstract.savefig('RL_'+agent_type+'_'+trans+'.pdf')
         figabstract.savefig('RL_'+agent_type+'_'+trans+'.svg')
@@ -344,8 +346,8 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
 if __name__ == "__main__":
 
     ############## choose / uncomment one of the agents below! #################
-    agent_type='belief'
-    #agent_type='basic'
+    #agent_type='belief'
+    agent_type='basic'
     
     # choose whether ACC is inhibited or not
     #ACC_off = True

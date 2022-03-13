@@ -298,11 +298,12 @@ class BeliefHistoryTabularRL():
                 # this is the action to the previous_observation
                 action_vector_exp_compare[exp_step] = self.action
                 
-                # current context belief probabilities
-                context_record[exp_step,:] = self.context_belief_probabilities
-                # context prediction error saved here is calculated above using previous step's observation
-                #  as the action taken in this step was for the observation in the previous step
-                mismatch_error_record[exp_step,:] = self.context_prediction_error
+                if self.beliefRL:
+                    # current context belief probabilities
+                    context_record[exp_step,:] = self.context_belief_probabilities
+                    # context prediction error saved here is calculated above using previous step's observation
+                    #  as the action taken in this step was for the observation in the previous step
+                    mismatch_error_record[exp_step,:] = self.context_prediction_error
 
                 # increment the running index of the saved vectors
                 exp_step += 1
