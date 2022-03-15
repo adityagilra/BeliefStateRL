@@ -298,9 +298,11 @@ def analyse_neural_mismatch():
     number_of_sessions = len(mouse_neural_mismatch)
     print('num sessions =',number_of_sessions)
 
+    # By correct and incorrect/wrong transitions, I mean perfect (one-shot) and imperfect transitions.
     print('mismatch vs in/correct O2V transitions')
     mismatches = [[],[]]
     mismatches_flat = [[],[]]
+    mismatch_difference = [[],[]]
     valid_sessions = []
 
     for session_idx in range(number_of_sessions):
@@ -317,22 +319,36 @@ def analyse_neural_mismatch():
             print('num transitions =',len(session_data),', num mismatch neurons =', len(session_data[0]))
             correct_transition_idxs = (mouse_correct_switch[session_idx][0]==1)
             print('correct transition idxs =',correct_transition_idxs)
-            mean_mismatch_for_wrong_transitions = np.mean(session_data[~correct_transition_idxs,:],axis=1)
-            mean_mismatch_for_correct_transitions = np.mean(session_data[correct_transition_idxs,:],axis=1)
-            print('mismatch_for_wrong_transitions =',mean_mismatch_for_wrong_transitions)
-            print('mismatch_for_correct_transitions =',mean_mismatch_for_correct_transitions)
-            if len(mean_mismatch_for_wrong_transitions)==0:
+            # inter-neuron variance in response amplitude (noise here) is larger than
+            #  inter-neuron difference for imperfect vs perfect transition (signal here),
+            #  so signal gets washed out.
+            # hence, don't take mean across neurons right at the start
+            mean_across_neurons__mismatch_for_wrong_transitions = np.mean(session_data[~correct_transition_idxs,:],axis=1)
+            mean_across_neurons__mismatch_for_correct_transitions = np.mean(session_data[correct_transition_idxs,:],axis=1)
+            # take mean across 2 types of transition and subtract theses 2 for each neuron individually,
+            #  then take mean across neurons of this difference.
+            #  this gives the difference in mismatch signal between 2 types of transitions
+            mean_across_transitions__mismatch_for_wrong_transitions = np.mean(session_data[~correct_transition_idxs,:],axis=0)
+            mean_across_transitions__mismatch_for_correct_transitions = np.mean(session_data[correct_transition_idxs,:],axis=0)
+            difference_across_transitions = \
+                mean_across_transitions__mismatch_for_wrong_transitions \
+                    - mean_across_transitions__mismatch_for_correct_transitions
+            # difference gives nan if all transitions are perfect or imperfect, thus discard
+            if not np.isnan(difference_across_transitions[0]):
+                print('difference in mismatch for (imperfect - perfect) transitions =',
+                             difference_across_transitions)
                 mean_mismatch_for_wrong_transitions = [0]
-            mismatches[0].append(mean_mismatch_for_wrong_transitions)
-            mismatches_flat[0].extend(mean_mismatch_for_wrong_transitions)
-            if len(mean_mismatch_for_correct_transitions)==0:
+                mismatches[0].append(mean_mismatch_for_wrong_transitions)
+                mismatches_flat[0].extend(mean_mismatch_for_wrong_transitions)
                 mean_mismatch_for_correct_transitions = [0]
-            mismatches[1].append(mean_mismatch_for_correct_transitions)
-            mismatches_flat[1].extend(mean_mismatch_for_correct_transitions)
-            valid_sessions.append(session_idx)
+                mismatches[1].append(mean_mismatch_for_correct_transitions)
+                mismatches_flat[1].extend(mean_mismatch_for_correct_transitions)
+                mismatch_difference[0].append(np.mean(difference_across_transitions))
+                mismatch_difference[1].append(np.std(difference_across_transitions))
+                valid_sessions.append(session_idx)
         print()
 
-    return mismatches, mismatches_flat, valid_sessions
+    return mismatches, mismatches_flat, mismatch_difference, valid_sessions
 
 if __name__ == "__main__":
     # choose control for ACC not inhibited, exp for ACC inhibited
@@ -371,7 +387,8 @@ if __name__ == "__main__":
 
     plot_prob_actions_given_stimuli(trans='V2O')
     
-    mismatches_o2v, mismatches_flat_o2v, sessions_o2v = analyse_neural_mismatch()
+    mismatches_o2v, mismatches_flat_o2v, mismatch_difference_o2v, sessions_o2v = analyse_neural_mismatch()
+    """
     fig, ax = plt.subplots(1,1)
     ax.bar( ['wrong switch','correct switch'],
                 [np.mean(mismatches_flat_o2v[0]),np.mean(mismatches_flat_o2v[1])],
@@ -389,5 +406,11 @@ if __name__ == "__main__":
         axes[row,col].set_title('session '+str(sessions_o2v[session_idx]))
     #fig.suptitle('mismatch error O2V vs (in)correct switch')
     fig.tight_layout()
-    
+    """
+
+    fig, ax = plt.subplots(1,1,figsize=(10,4))
+    ax.bar( sessions_o2v, mismatch_difference_o2v[0], yerr=mismatch_difference_o2v[1] )
+    ax.set_xlabel('session id')
+    ax.set_ylabel('mismatch difference (imperfect-perfect transition) O2V')
+
     plt.show()
