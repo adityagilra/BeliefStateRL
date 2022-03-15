@@ -12,8 +12,8 @@ class BeliefHistoryTabularRL():
                 beliefRL=True, belief_switching_rate=0.7, ACC_off_factor=1.,
                 weak_visual_factor = 1., context_sampling = True,
                 context_error_noiseSD_factor = 0.,
-                exploration_is_modulated_by_context_prediction_error=False,
-                exploration_add_factor_for_context_prediction_error=8):
+                exploration_is_modulated_by_context_uncertainty=False,
+                exploration_add_factor_for_context_uncertainty=8):
         self.env = env
         self.seed = seed
 
@@ -64,13 +64,13 @@ class BeliefHistoryTabularRL():
             #  it is factor to reduce context prediction error as a proxy for ACC silencing
             #  setting is as 1 implies no ACC silencing
             self.ACC_off_factor = ACC_off_factor
-            self.weak_visual_factor = weak_visual_factor
+            #self.weak_visual_factor = weak_visual_factor # obsolete, not used now
             # whether exploration is modulated by context prediction error,
             #  and by how much additional factor
-            self.exploration_is_modulated_by_context_prediction_error = \
-                    exploration_is_modulated_by_context_prediction_error
-            self.exploration_add_factor_for_context_prediction_error = \
-                exploration_add_factor_for_context_prediction_error
+            self.exploration_is_modulated_by_context_uncertainty = \
+                    exploration_is_modulated_by_context_uncertainty
+            self.exploration_add_factor_for_context_uncertainty = \
+                exploration_add_factor_for_context_uncertainty
             
             # whether to sample context from context belief probabilities
             #  or just choose the one with largest probability
@@ -142,16 +142,18 @@ class BeliefHistoryTabularRL():
 
             if self.beliefRL:
                 ####### BeliefRL
-                if self.exploration_is_modulated_by_context_prediction_error:
+                if self.exploration_is_modulated_by_context_uncertainty:
                     # using context_prediction_error to guide exploration instead of context_belief_probabilities
                     #  the former detects context change and affects exploration from first trial after transition
                     #  the latter updates in first trial and affects exploration from second trial after transtion
-                    #context_uncertainty = 1.0 - np.abs(self.context_belief_probabilities[0]\
-                    #                                    -self.context_belief_probabilities[1])
-                    context_uncertainty = ( np.abs(self.context_prediction_error[0])\
-                                                        + np.abs(self.context_prediction_error[1]) ) / 2.
+                    #context_uncertainty = ( np.abs(self.context_prediction_error[0])\
+                    #                                    + np.abs(self.context_prediction_error[1]) ) / 2.
+                    # modified context error to be computed only at end of trial step, so will be zero when cues are presented,
+                    # thus use context_belief_probabilities
+                    context_uncertainty = 1.0 - np.abs(self.context_belief_probabilities[0]\
+                                                        -self.context_belief_probabilities[1])
                     self.exploration_rate *= \
-                            (1 + self.exploration_add_factor_for_context_prediction_error*context_uncertainty)
+                            (1 + self.exploration_add_factor_for_context_uncertainty*context_uncertainty)
                 else:
                     pass
                 if self.weight_contexts_by_probabilities:

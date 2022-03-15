@@ -226,7 +226,7 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
     #env = gym.make('visual_olfactory_attention_switch-v0')
     # HARDCODED these observations to stimuli encoding
     env = gym.make('visual_olfactory_attention_switch_no_blank-v0',
-                    lick_without_reward_factor=0.2)
+                    lick_without_reward_factor=1.)
 
     ############# agent instatiation and agent parameters ###########
     # you need around 1,000,000 steps for enough transitions to average over
@@ -275,8 +275,8 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
                                         recording_time_steps=steps//2)
     elif agent_type=='belief' or agent_type=='history0_belief':
         # no history, just belief in one of two contexts - two Q tables
-        steps = 500000
-        #steps = 2000000
+        #steps = 500000
+        steps = 2000000
 
         # obtained by 1-param fit using powell's minimize mse
         #belief_switching_rate = 0.76837728
@@ -288,7 +288,7 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
         #belief_switching_rate, epsilon, alpha = 0.6, 0.1, 0.105
 
         # obtained by 3-param fit using brute minimize mse (alpha fixed at 0.1)
-        #belief_switching_rate, epsilon, exploration_add_factor_for_context_prediction_error, alpha \
+        #belief_switching_rate, epsilon, exploration_add_factor_for_context_uncertainty, alpha \
         #            = 0.52291667, 0.10208333, 8.146875, 0.1
 
 
@@ -301,27 +301,27 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
         # could use both by setting context_sampling=True and a non-zero context_error_noiseSD_factor!
         if context_sampling:
             context_error_noiseSD_factor = 0.            
-            #belief_switching_rate, epsilon, exploration_add_factor_for_context_prediction_error, alpha \
+            #belief_switching_rate, epsilon, exploration_add_factor_for_context_uncertainty, alpha \
             #            = 0.6, 0.1, 0, 0.1
 
             # obtained by 3-param fit using brute minimize mse
             #  with nan-errors i.e. nan-s matched with nan-s, else error ~ 1 per nan
             #  alpha fixed at 0.1 for the fitting
             # params used for CoSyNe abstract
-            belief_switching_rate, epsilon, exploration_add_factor_for_context_prediction_error, alpha \
+            belief_switching_rate, epsilon, exploration_add_factor_for_context_uncertainty, alpha \
                         = 0.54162102, 0.09999742, 8.2049604, 0.1
         else:
             # obtained by 2-param fit -- note: switching rate is at the border of allowed, so redo
             belief_switching_rate, context_error_noiseSD_factor \
                         = 0.285, 2.1
                         #= 0.490625, 3.065625
-            epsilon, exploration_add_factor_for_context_prediction_error, alpha \
+            epsilon, exploration_add_factor_for_context_uncertainty, alpha \
                         = 0.1, 0, 0.1
 
         # choose one of the two below:
-        exploration_is_modulated_by_context_prediction_error = True
-        #exploration_is_modulated_by_context_prediction_error = False
-        if exploration_is_modulated_by_context_prediction_error:
+        exploration_is_modulated_by_context_uncertainty = True
+        #exploration_is_modulated_by_context_uncertainty = False
+        if exploration_is_modulated_by_context_uncertainty:
             # keep exploration & learning always on
             #  for noise and belief uncertainty driven exploration
             learning_time_steps = steps
@@ -334,10 +334,10 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
                                         alpha=alpha, epsilon=epsilon, seed=seed,
                                         context_sampling = context_sampling,
                                         context_error_noiseSD_factor = context_error_noiseSD_factor,
-                                        exploration_is_modulated_by_context_prediction_error=\
-                                            exploration_is_modulated_by_context_prediction_error,
-                                        exploration_add_factor_for_context_prediction_error=\
-                                            exploration_add_factor_for_context_prediction_error,
+                                        exploration_is_modulated_by_context_uncertainty=\
+                                            exploration_is_modulated_by_context_uncertainty,
+                                        exploration_add_factor_for_context_uncertainty=\
+                                            exploration_add_factor_for_context_uncertainty,
                                         learning_time_steps=learning_time_steps,
                                         recording_time_steps=steps//2)
 
@@ -346,8 +346,8 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
 if __name__ == "__main__":
 
     ############## choose / uncomment one of the agents below! #################
-    #agent_type='belief'
-    agent_type='basic'
+    agent_type='belief'
+    #agent_type='basic'
     
     # choose whether ACC is inhibited or not
     #ACC_off = True
