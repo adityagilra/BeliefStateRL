@@ -10,7 +10,8 @@ from scipy.optimize import minimize, Bounds, brute
 def meansquarederror(parameters,
                         agent_type, agent, steps,
                         mean_probability_action_given_stimulus_o2v,
-                        mean_probability_action_given_stimulus_v2o):
+                        mean_probability_action_given_stimulus_v2o,
+                        fit_rewarded_stimuli_only):
 
     print("Training agent with parameters = ",parameters)
     agent.reset()
@@ -34,13 +35,6 @@ def meansquarederror(parameters,
         learning_rate = parameters[1]
         agent.alpha = learning_rate
         agent.epsilon = exploration_rate
-
-    # since I use different number of training steps
-    #  than the agent was initialized envisaged for,
-    #  I need to adjust the learning and recording time steps
-    #agent.learning_time_steps=steps
-    agent.learning_time_steps=steps//2
-    agent.recording_time_steps=steps//2
 
     # train the RL agent on the task
     exp_step, block_vector_exp_compare, \
@@ -74,6 +68,19 @@ def meansquarederror(parameters,
                                 context_record, mismatch_error_record,
                                 O2V = False)
 
+    if fit_rewarded_stimuli_only:
+        # stimuli are in the order: ['+v','-v','/+v','/-v','+o','-o']
+        # we select indices 0,2,4
+        probability_action_given_stimulus_v2o = \
+            probability_action_given_stimulus_v2o[[0,2,4],:]
+        probability_action_given_stimulus_o2v = \
+            probability_action_given_stimulus_o2v[[0,2,4],:]
+        mean_probability_action_given_stimulus_v2o = \
+            mean_probability_action_given_stimulus_v2o[[0,2,4],:]
+        mean_probability_action_given_stimulus_o2v = \
+            mean_probability_action_given_stimulus_o2v[[0,2,4],:]
+    
+    # Obsolete way to compare nan-s in exp to nan-s in model
     # replace nan-s by -0.5 in agent behaviour (already done for experiment)
     # this ensures that nan-s are mapped to nan-s for the fitting,
     # while remaining in absolute range of other values which are in [0,1]
@@ -85,12 +92,13 @@ def meansquarederror(parameters,
     #probability_action_given_stimulus_v2o[\
     #    np.isnan(probability_action_given_stimulus_v2o)] = -0.5
     
+    # compute error when nan-s in exp don't mapp to nan-s in model and vice versa
     # boolean astype(int) subtraction will be 1 or -1 if not same, 0 if same,
     #  so error will be in same absolute range as other errors
     nan_error_o2v = np.isnan(probability_action_given_stimulus_o2v).astype(int) \
-                        - np.isnan(probability_action_given_stimulus_o2v).astype(int)
+                        - np.isnan(mean_probability_action_given_stimulus_o2v).astype(int)
     nan_error_v2o = np.isnan(probability_action_given_stimulus_v2o).astype(int) \
-                        - np.isnan(probability_action_given_stimulus_v2o).astype(int)
+                        - np.isnan(mean_probability_action_given_stimulus_v2o).astype(int)
     
     # error is simulated agent transitions - experimental transitions
     #  nan-0=nan and 0-nan=nan, nan-s already handled above
@@ -122,8 +130,8 @@ def meansquarederror(parameters,
 if __name__ == "__main__":
     
     # choose whether ACC is inhibited or not
-    ACC_off = True
-    #ACC_off = False
+    #ACC_off = True
+    ACC_off = False
     if ACC_off:
         ACC_off_factor = 0.5 # inhibited ACC
         ACC_str = 'exp'
@@ -132,8 +140,8 @@ if __name__ == "__main__":
         ACC_str = 'control'
 
     # choose one of the two below, either fit a session only, or all mice, all sessions.
-    fit_a_session = True
-    #fit_a_session = False
+    #fit_a_session = True
+    fit_a_session = False
     if fit_a_session:
         mice_list = [0]
         sessions_list = [0]
@@ -141,6 +149,11 @@ if __name__ == "__main__":
         mice_list = None
         sessions_list = None
     
+    # choose one of the two below, either fit only rewarded stimuli (+v, /+v, +o),
+    #  or both rewarded and unrewarded (internally rewarded) stimuli,
+    fit_rewarded_stimuli_only = True
+    #fit_rewarded_stimuli_only = False
+
     # read experimental data
     print("reading experimental data")
     number_of_mice, across_mice_average_reward_o2v, \
@@ -207,7 +220,7 @@ if __name__ == "__main__":
                         #belief_exploration_add_factor_start)
         #ranges = ((0.5,0.9),(0.1,0.4),(3,10))
         #ranges = ((0.5,0.9),(0.1,0.4),(0.1,0.5))
-        ranges = ((0.3,0.9),(1.,5.))
+        ranges = ((0.3,0.9),(0.5,5.))
     elif agent_type == 'basic':
         exploration_rate_start = 0.1
         learning_rate_start = 0.1
@@ -250,16 +263,18 @@ if __name__ == "__main__":
     #  brute force: https://docs.scipy.org/doc/scipy/reference/reference/generated/scipy.optimize.brute.html#scipy.optimize.brute
     #  etc.
     
-    # workers=-1 means use all cores available to this process, Ns specify how to divide the grid
-    #  but this requires the function to be pickable, which isn't the case for me, so only 1 worker
-    # looks like the 'finish' argument is scipy.optimize.fmin by default,
+    # Ns specify how to divide the grid.
+    # workers=-1 means use all cores available to this process,
+    #  but this requires the function to be pickleable, which isn't the case for me, so only 1 worker.
+    # Looks like the 'finish' argument is scipy.optimize.fmin by default,
     #  so once grid point minimum is found,
     #  fmin searches locally around this, using best grid point as a starting value
     #  can set finish=None to just return the best grid point
     result = brute(meansquarederror, ranges=ranges, 
                         args=(agent_type, agent, steps,
                         mean_probability_action_given_stimulus_o2v,
-                        mean_probability_action_given_stimulus_v2o),
+                        mean_probability_action_given_stimulus_v2o,
+                        fit_rewarded_stimuli_only),
                         Ns=5, full_output=True, disp=True, workers=1)
 
     print(result)

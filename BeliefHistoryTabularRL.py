@@ -7,7 +7,7 @@ class BeliefHistoryTabularRL():
 
     def __init__(self, env, policy=1, alpha=0.1, epsilon=0.1, seed=None,
                 exploration_decay=False, exploration_decay_time_steps=100000,
-                learning_time_steps=100000, recording_time_steps=100000,
+                learning_during_testing=False,
                 history=0,
                 beliefRL=True, belief_switching_rate=0.7, ACC_off_factor=1.,
                 weak_visual_factor = 1., context_sampling = True,
@@ -31,10 +31,7 @@ class BeliefHistoryTabularRL():
         #  exploration decays to zero over this time scale
         self.exploration_decay_time_steps = exploration_decay_time_steps
 
-        # learning only occurs till this time step
-        self.learning_time_steps = learning_time_steps
-        # recording starts after this time step
-        self.recording_time_steps = recording_time_steps
+        self.learning_during_testing = learning_during_testing
 
         # if history, then store current and previous observations as state
         # else just store current observation as state
@@ -122,7 +119,7 @@ class BeliefHistoryTabularRL():
         self.value_vector = {self.state: np.zeros(self.n_contexts)}
         self.Q_array = {self.state: np.zeros((self.n_contexts,self.actions_length))}
 
-    def decide_action(self):
+    def decide_action(self, exploration_rate):
         ############# choose an action
         if self.policy == 0:
             # random policy
@@ -130,14 +127,11 @@ class BeliefHistoryTabularRL():
         elif self.policy == 1:
             ############ Q-value based epsilon-greedy policy
             ###### Exploration rate
-            # no exploration after learning stops!
-            if self.t>self.learning_time_steps:
-                self.exploration_rate = 0.
-            else:
-                self.exploration_rate = self.epsilon
+            # if exploration_rate passed in is zero,
+            #  then below modulations have no effect as they are all multiplicative
             if self.exploration_decay:
                 # explore with a decreasing probability over exploration_decay_time_steps
-                self.exploration_rate *= \
+                exploration_rate *= \
                         np.clip(1.-self.t/self.exploration_decay_time_steps,0,1)
 
             if self.beliefRL:
@@ -152,10 +146,9 @@ class BeliefHistoryTabularRL():
                     # thus use context_belief_probabilities
                     context_uncertainty = 1.0 - np.abs(self.context_belief_probabilities[0]\
                                                         -self.context_belief_probabilities[1])
-                    self.exploration_rate *= \
+                    exploration_rate *= \
                             (1 + self.exploration_add_factor_for_context_uncertainty*context_uncertainty)
-                else:
-                    pass
+
                 if self.weight_contexts_by_probabilities:
                     # agent weights Q values of contexts by current context probabilities
                     pass # to implement
@@ -178,14 +171,14 @@ class BeliefHistoryTabularRL():
                         # select the context with higher belief
                         context_assumed_now = np.argmax(self.context_belief_probabilities)
                     
-                    if np.random.uniform() < self.exploration_rate:
+                    if np.random.uniform() < exploration_rate:
                         action = self.env.action_space.sample()
                     else:
                         action = np.argmax(self.Q_array[self.previous_state][context_assumed_now,:])
             else:
                 ###### Not context-belief-based, just one context assumed
                 context_assumed_now = 0
-                if np.random.uniform() < self.exploration_rate:
+                if np.random.uniform() < exploration_rate:
                     action = self.env.action_space.sample()
                 else:
                     action = np.argmax(self.Q_array[self.previous_state][0,:])
@@ -193,6 +186,14 @@ class BeliefHistoryTabularRL():
         return action, context_assumed_now
 
     def train(self,steps):
+        # learning and exploration only occur till this time step
+        if self.learning_during_testing:
+            learning_time_steps = steps
+        else:
+            learning_time_steps = steps//2
+        # recording starts after this time step
+        recording_time_steps = steps//2
+
         reward_vector = np.zeros(steps)
         cumulative_reward = np.zeros(steps)
         block_vector = np.zeros(steps)
@@ -209,7 +210,12 @@ class BeliefHistoryTabularRL():
 
         for self.t in range(1,steps):
 
-            self.action, self.context_assumed_now = self.decide_action()
+            # no exploration after learning stops!
+            if self.t>learning_time_steps:
+                exploration_rate = 0.
+            else:
+                exploration_rate = self.epsilon
+            self.action, self.context_assumed_now = self.decide_action(exploration_rate)
 
             ############### take the action in the environment / task
             self.observation, self.reward, self.done, self.info = self.env.step(self.action)
@@ -281,7 +287,7 @@ class BeliefHistoryTabularRL():
             # also record only after recording_time_steps (usually set same as learning_time_steps)
             # HARDCODED for no-blanks environment: assume blank observation is not present,
             #  so no need to filter out blanks similar to end_observation
-            if self.t>self.recording_time_steps and self.previous_observation!=self.end_observation:
+            if self.t>recording_time_steps and self.previous_observation!=self.end_observation:
                 reward_vector_exp_compare[exp_step] = self.reward
                 # note that block number changes on the first time step of a new trial,
                 block_vector_exp_compare[exp_step] = self.info['block']
@@ -337,7 +343,7 @@ class BeliefHistoryTabularRL():
             #  (for a finite horizon MDP, value of end state = 0),
             # change only if previous observation is not end state
             # also learning happens only for learning_time_steps
-            if self.previous_observation != self.end_observation and self.t<=self.learning_time_steps:
+            if self.previous_observation != self.end_observation and self.t<=learning_time_steps:
                 # self.weight_contexts_by_probabilities == False is not implemented
                 # below update works for self.beliefRL==False and self.beliefRL==True,
                 #  though the update will be very different for the case:

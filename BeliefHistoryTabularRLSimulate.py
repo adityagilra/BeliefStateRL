@@ -244,39 +244,46 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
         # with history=0 and beliefRL=False, need to keep learning always on!
         #steps = 1000000
         steps = 2000000
-        # 2-param fit using brute to minimize mse,
+        ### 2-param fit using brute to minimize mse,
         #  ended without success, due to exceeding max func evals
         #epsilon, alpha = 0.21886517, 0.72834129
-        # does not give a sudden peak/lick in /+V stimulus in V2O transition
+        ## does not give a sudden peak/lick in /+V stimulus in V2O transition
         #epsilon, alpha = 0.2, 0.2
-        # 2-param fit using brute to minimize mse,
-        #  fitting nan-s to nan-s, terminated successfully
-        epsilon, alpha = 0.21947144, 0.76400787
+        ### 2-param fit using brute to minimize mse,
+        #  fitting nan-s to nan-s [update: was bug here], terminated successfully
+        #epsilon, alpha = 0.21947144, 0.76400787
+        ### 2-param fit to only 'rewarded' stimuli +v, /+v, +o
+        #  (though /+v i.e. +v in odor block is not rewarded!)
+        #  i.e. we avoid fitting to stimuli -v, /-v and -o
+        #  which are not rewarded and the punishment value is unclear.
+        #  with bug-fixed nan-s to nan-s fitting,
+        epsilon, alpha = 0.21976563, 0.96556641 # fit p(lick|stimuli) for only reward-structure-known stimuli # exploration on during testing # fitted successfully with mse = 0.005474
+        #epsilon, alpha = 0.20625835, 0.9112167 # fit p(lick|stimuli) for all stimuli # exploration on during testing # fitted successfully with mse = 0.004342
+        learning_during_testing = True
         agent = BeliefHistoryTabularRL(env,history=0,beliefRL=False,
                                         alpha=alpha,epsilon=epsilon,seed=seed,
-                                        learning_time_steps=steps,
-                                        recording_time_steps=steps//2)
+                                        learning_during_testing=learning_during_testing)
     elif agent_type=='history1_nobelief':
         # with history=1 and beliefRL=False, no need to keep learning always on!
         #  learning stops after learning_time_steps,
         #  then 1 step correct performance switch!
         # history=1 takes a bit longer to learn than history=2!
         steps = 2000000
+        learning_during_testing = False
         agent = BeliefHistoryTabularRL(env,history=2,beliefRL=False,seed=seed,
-                                        learning_time_steps=steps//2,
-                                        recording_time_steps=steps//2)
+                                        learning_during_testing=learning_during_testing)
     elif agent_type=='history2_nobelief':
         # with history=2 and beliefRL=False, no need to keep learning always on!
         #  learning stops after learning_time_steps,
         #  then 1 step correct performance switch!
         steps = 1000000
+        learning_during_testing = False
         agent = BeliefHistoryTabularRL(env,history=2,beliefRL=False,seed=seed,
-                                        learning_time_steps=steps//2,
-                                        recording_time_steps=steps//2)
+                                        learning_during_testing=learning_during_testing)
     elif agent_type=='belief' or agent_type=='history0_belief':
         # no history, just belief in one of two contexts - two Q tables
-        #steps = 500000
-        steps = 2000000
+        steps = 500000
+        #steps = 2000000
 
         # obtained by 1-param fit using powell's minimize mse
         #belief_switching_rate = 0.76837728
@@ -291,55 +298,68 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
         #belief_switching_rate, epsilon, exploration_add_factor_for_context_uncertainty, alpha \
         #            = 0.52291667, 0.10208333, 8.146875, 0.1
 
+        ## At every time step, in decide_action(), a context is assumed
 
-        # choose whether context_sampling is True or False below
-        # source of noise in switching i.e. after a transition is due to
+        # one way of introducing noise in switching i.e. after a transition could be due to
         #  sampling current context from the context belief probability distribution
+        # choose whether context_sampling is True or False below
         context_sampling = True
-        #  noise in context error signal in the ACC
         #context_sampling = False
-        # could use both by setting context_sampling=True and a non-zero context_error_noiseSD_factor!
-        if context_sampling:
-            context_error_noiseSD_factor = 0.            
-            #belief_switching_rate, epsilon, exploration_add_factor_for_context_uncertainty, alpha \
-            #            = 0.6, 0.1, 0, 0.1
 
-            # obtained by 3-param fit using brute minimize mse
-            #  with nan-errors i.e. nan-s matched with nan-s, else error ~ 1 per nan
-            #  alpha fixed at 0.1 for the fitting
-            # params used for CoSyNe abstract
-            belief_switching_rate, epsilon, exploration_add_factor_for_context_uncertainty, alpha \
-                        = 0.54162102, 0.09999742, 8.2049604, 0.1
-        else:
-            # obtained by 2-param fit -- note: switching rate is at the border of allowed, so redo
+        # another way to introduce noise in context setting could be due to a noisy integrate to threshold
+        # can just add a noise (parameterized by SD below) to the context belief probabilities and then take max
+        #context_noiseSD = 
+        
+        # noise could also be from context error signal in the ACC parametrized by a context_error_noiseSD_factor
+        if context_sampling:
             belief_switching_rate, context_error_noiseSD_factor \
-                        = 0.285, 2.1
-                        #= 0.490625, 3.065625
+                        = 0.45787308, 3.50795822 # fit p(lick|stimuli) for only reward-structure-known stimuli # exploration off during testing, & context_sampling=True # mse = = 0.001151
+            #belief_switching_rate, context_error_noiseSD_factor \
+            #            = 0.594375  , 4.26855469 # fit p(lick|stimuli) for all 4 stimuli # exploration off during testing, & context_sampling=True # mse = 0.004001
             epsilon, exploration_add_factor_for_context_uncertainty, alpha \
                         = 0.1, 0, 0.1
 
+            #context_error_noiseSD_factor = 0.            
+            ##belief_switching_rate, epsilon, exploration_add_factor_for_context_uncertainty, alpha \
+            ##            = 0.6, 0.1, 0, 0.1
+
+            ## obtained by 3-param fit using brute minimize mse
+            ##  with nan-errors i.e. nan-s matched with nan-s, else error ~ 1 per nan [with bug]
+            ##  alpha fixed at 0.1 for the fitting
+            ## params used for CoSyNe abstract
+            #belief_switching_rate, epsilon, exploration_add_factor_for_context_uncertainty, alpha \
+            #            = 0.54162102, 0.09999742, 8.2049604, 0.1
+        else:
+            # obtained by 2-param fit -- note: switching rate is at the border of allowed, so redo
+            belief_switching_rate, context_error_noiseSD_factor \
+                        = 0.30890625, 2.01875 # fit p(lick|stimuli) for only reward-structure-known stimuli # exploration on during testing, & context_sampling=False
+                        #= 0.285, 2.1 fit p(lick|stimuli) for all stimuli (buggy nan-s fitting) # exploration on during testing, and context_sampling is False
+                        ##= 0.490625, 3.065625
+                        #= 0.18940429, 1.34079591 # # fit p(lick|stimuli) for only reward-structure-known stimuli # exploration off during testing, & context_sampling=True
+                        #= 0.86282212, 3.09287167 # fit p(lick|stimuli) for all stimuli # exploration off during testing, & context_sampling=True
+            epsilon, exploration_add_factor_for_context_uncertainty, alpha \
+                        = 0.1, 0, 0.1
+
+        learning_during_testing = False
         # choose one of the two below:
-        exploration_is_modulated_by_context_uncertainty = True
-        #exploration_is_modulated_by_context_uncertainty = False
+        #exploration_is_modulated_by_context_uncertainty = True
+        exploration_is_modulated_by_context_uncertainty = False
         if exploration_is_modulated_by_context_uncertainty:
             # keep exploration & learning always on
             #  for noise and belief uncertainty driven exploration
-            learning_time_steps = steps
-        else:
-            learning_time_steps = steps//2
+            learning_during_testing = True
 
         agent = BeliefHistoryTabularRL(env,history=0,beliefRL=True,
                                         belief_switching_rate=belief_switching_rate,
                                         ACC_off_factor = ACC_off_factor,
                                         alpha=alpha, epsilon=epsilon, seed=seed,
+                                        learning_during_testing=learning_during_testing,
                                         context_sampling = context_sampling,
                                         context_error_noiseSD_factor = context_error_noiseSD_factor,
                                         exploration_is_modulated_by_context_uncertainty=\
                                             exploration_is_modulated_by_context_uncertainty,
                                         exploration_add_factor_for_context_uncertainty=\
-                                            exploration_add_factor_for_context_uncertainty,
-                                        learning_time_steps=learning_time_steps,
-                                        recording_time_steps=steps//2)
+                                            exploration_add_factor_for_context_uncertainty)
 
     return env, agent, steps
 
