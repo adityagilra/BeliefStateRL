@@ -12,6 +12,7 @@ class BeliefHistoryTabularRL():
                 beliefRL=True, belief_switching_rate=0.7, ACC_off_factor=1.,
                 weak_visual_factor = 1., context_sampling = True,
                 context_error_noiseSD_factor = 0.,
+                unrewarded_visual_exploration_rate = 0.,
                 exploration_is_modulated_by_context_uncertainty=False,
                 exploration_add_factor_for_context_uncertainty=8):
         self.env = env
@@ -22,6 +23,8 @@ class BeliefHistoryTabularRL():
         #policy = 1 # epsilon-greedy
         self.policy = policy
         self.epsilon = epsilon # exploration probability in epsilon-greedy policy
+        # to fit the high licking rate to unrewarded visual cue in visual block
+        self.unrewarded_visual_exploration_rate = unrewarded_visual_exploration_rate
 
         self.alpha = alpha # TD learning rate in [0,1]
 
@@ -125,6 +128,27 @@ class BeliefHistoryTabularRL():
             # random policy
             action = self.env.action_space.sample()
         elif self.policy == 1:
+            if self.beliefRL and not self.weight_contexts_by_probabilities:
+                # agent chooses a context for action, based on current context belief / probabilities                
+                if self.context_sampling:
+                    # sample the current context from belief probabilities
+                    #  could be a proxy for a neural decision making process
+                    #  this sampling noise typically overshadows the noise added to context prediction error
+                    context_assumed_now = \
+                        np.random.choice( range(self.n_contexts),\
+                                            p=self.context_belief_probabilities )
+                else:
+                    # select the context with higher belief
+                    context_assumed_now = np.argmax(self.context_belief_probabilities)
+
+            # if unrewarded visual cue in visual block, then boost exploration independently
+            if self.observation == self.visual_observations[1]:
+                if self.beliefRL:
+                    if context_assumed_now == 0:
+                        exploration_rate = self.unrewarded_visual_exploration_rate
+                else:
+                    exploration_rate = self.unrewarded_visual_exploration_rate
+
             ############ Q-value based epsilon-greedy policy
             ###### Exploration rate
             # if exploration_rate passed in is zero,

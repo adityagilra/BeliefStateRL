@@ -2,132 +2,27 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from exp_data_analysis import get_exp_reward_around_transition
-from BeliefHistoryTabularRLSimulate import get_env_agent, \
-                                    process_transitions, half_window
+from BeliefHistoryTabularRLSimulate import get_env_agent, half_window
+from utils import run_and_mse
 import sys
 from scipy.optimize import minimize, Bounds, brute
 
-def meansquarederror(parameters,
-                        agent_type, agent, steps,
-                        mean_probability_action_given_stimulus_o2v,
-                        mean_probability_action_given_stimulus_v2o,
-                        fit_rewarded_stimuli_only):
-
-    print("Training agent with parameters = ",parameters)
-    agent.reset()
-
-    if agent_type == 'belief':
-        belief_switching_rate = parameters[0]
-        agent.belief_switching_rate = belief_switching_rate
-        context_error_noiseSD_factor = parameters[1]
-        agent.context_error_noiseSD_factor = context_error_noiseSD_factor
-        #exploration_rate = parameters[1]
-        #agent.epsilon = exploration_rate
-        #learning_rate = parameters[2]
-        #agent.alpha = learning_rate
-        #belief_exploration_add_factor = parameters[2]
-        #agent.belief_exploration_add_factor = \
-        #        belief_exploration_add_factor
-        #weak_visual_factor = parameters[2]
-        #agent.weak_visual_factor = weak_visual_factor
-    else:
-        exploration_rate = parameters[0]
-        learning_rate = parameters[1]
-        agent.alpha = learning_rate
-        agent.epsilon = exploration_rate
-
-    # train the RL agent on the task
-    exp_step, block_vector_exp_compare, \
-        reward_vector_exp_compare, stimulus_vector_exp_compare, \
-            action_vector_exp_compare, context_record, mismatch_error_record = \
-                agent.train(steps)
-
-    # obtain the mean reward and action given stimulus around O2V transition
-    # no need to pass above variables as they are not modified, only analysed
-    average_reward_around_o2v_transition, \
-        actionscount_to_stimulus_o2v, \
-        probability_action_given_stimulus_o2v, \
-        context_o2v, mismatch_error_o2v, mismatch_by_perfectswitch_o2v = \
-            process_transitions(exp_step, block_vector_exp_compare,
-                                reward_vector_exp_compare,
-                                stimulus_vector_exp_compare,
-                                action_vector_exp_compare,
-                                context_record, mismatch_error_record,
-                                O2V = True)
-
-    # obtain the mean reward and action given stimulus around V2O transition
-    # no need to pass above variables as they are not modified, only analysed
-    average_reward_around_v2o_transition, \
-        actionscount_to_stimulus_v2o, \
-        probability_action_given_stimulus_v2o, \
-        context_v2o, mismatch_error_v2o, mismatch_by_perfectswitch_v2o = \
-            process_transitions(exp_step, block_vector_exp_compare,
-                                reward_vector_exp_compare,
-                                stimulus_vector_exp_compare,
-                                action_vector_exp_compare,
-                                context_record, mismatch_error_record,
-                                O2V = False)
-
-    if fit_rewarded_stimuli_only:
-        # stimuli are in the order: ['+v','-v','/+v','/-v','+o','-o']
-        # we select indices 0,2,4
-        probability_action_given_stimulus_v2o = \
-            probability_action_given_stimulus_v2o[[0,2,4],:]
-        probability_action_given_stimulus_o2v = \
-            probability_action_given_stimulus_o2v[[0,2,4],:]
-        mean_probability_action_given_stimulus_v2o = \
-            mean_probability_action_given_stimulus_v2o[[0,2,4],:]
-        mean_probability_action_given_stimulus_o2v = \
-            mean_probability_action_given_stimulus_o2v[[0,2,4],:]
-    
-    # Obsolete way to compare nan-s in exp to nan-s in model
-    # replace nan-s by -0.5 in agent behaviour (already done for experiment)
-    # this ensures that nan-s are mapped to nan-s for the fitting,
-    # while remaining in absolute range of other values which are in [0,1]
-    # and also distinguishable from them (being negative)
-    # nopes this will force agent fits to be 0 as that is closest to -0.5,
-    # unless the fiting algo discovers that nan is possible (but discontinuous jump)
-    #probability_action_given_stimulus_o2v[\
-    #    np.isnan(probability_action_given_stimulus_o2v)] = -0.5
-    #probability_action_given_stimulus_v2o[\
-    #    np.isnan(probability_action_given_stimulus_v2o)] = -0.5
-    
-    # compute error when nan-s in exp don't mapp to nan-s in model and vice versa
-    # boolean astype(int) subtraction will be 1 or -1 if not same, 0 if same,
-    #  so error will be in same absolute range as other errors
-    nan_error_o2v = np.isnan(probability_action_given_stimulus_o2v).astype(int) \
-                        - np.isnan(mean_probability_action_given_stimulus_o2v).astype(int)
-    nan_error_v2o = np.isnan(probability_action_given_stimulus_v2o).astype(int) \
-                        - np.isnan(mean_probability_action_given_stimulus_v2o).astype(int)
-    
-    # error is simulated agent transitions - experimental transitions
-    #  nan-0=nan and 0-nan=nan, nan-s already handled above
-    #  nan-s here are set to 0 below, so these won't contribute to error
-    error_o2v = probability_action_given_stimulus_o2v \
-                    - mean_probability_action_given_stimulus_o2v
-    error_v2o = probability_action_given_stimulus_v2o \
-                    - mean_probability_action_given_stimulus_v2o
-
-    # in-place (copy=False) replace nan-s by 0-s or as desired in error
-    # nan, posinf and neginf are new in numpy 1.17, my numpy is older
-    #np.nan_to_num(error_o2v, copy=False, nan=0, posinf=None, neginf=None)
-    #np.nan_to_num(error_v2o, copy=False, nan=0, posinf=None, neginf=None)
-    # my older version of numpy hardcodes setting nan to 0-s
-    error_o2v = np.nan_to_num(error_o2v, copy=False)
-    error_v2o = np.nan_to_num(error_v2o, copy=False)
-
-    # here (overall mean) = (mean of means) as same number of elements in _o2v and v2o
-    #  but not when handling nan-s separately from non-nan-s
-    #  but not bothering about this,
-    #   this counts as a changing weighting factor for nan-s vs non nan-s
-    mse = np.mean(np.power(error_o2v,2)) + np.mean(np.power(error_v2o,2)) \
-            + np.mean(np.power(nan_error_o2v,2)) + np.mean(np.power(nan_error_v2o,2))
-    mse /= 4.0
-    print("mean squared error = ",mse)
-
-    return mse
-
 if __name__ == "__main__":
+
+    #agent_type = 'belief'
+    agent_type = 'basic'
+    
+    # choose one of the below
+    #num_params_to_fit = 2 # for both basic and belief RL
+    num_params_to_fit = 3 # for both basic and belief RL
+    #num_params_to_fit = 4 # only for belief RL
+
+    # choose one of the two below, either fit only rewarded stimuli (+v, /+v, +o),
+    #  or both rewarded and unrewarded (internally rewarded) stimuli,
+    #fit_rewarded_stimuli_only = True
+    fit_rewarded_stimuli_only = False
+
+    seed = 1
     
     # choose whether ACC is inhibited or not
     #ACC_off = True
@@ -148,11 +43,6 @@ if __name__ == "__main__":
     else:
         mice_list = None
         sessions_list = None
-    
-    # choose one of the two below, either fit only rewarded stimuli (+v, /+v, +o),
-    #  or both rewarded and unrewarded (internally rewarded) stimuli,
-    fit_rewarded_stimuli_only = True
-    #fit_rewarded_stimuli_only = False
 
     # read experimental data
     print("reading experimental data")
@@ -185,15 +75,11 @@ if __name__ == "__main__":
     #mean_probability_action_given_stimulus_v2o[\
     #    np.isnan(mean_probability_action_given_stimulus_v2o)] = -0.5
 
-    agent_type = 'belief'
-    #agent_type = 'basic'
-
-    seed = 1
-
     # Instantiate the env and the agent
-    env, agent, steps = get_env_agent(agent_type=agent_type, 
+    env, agent, steps, params_all = get_env_agent(agent_type=agent_type, 
                                         ACC_off_factor=ACC_off_factor,
-                                        seed=seed)
+                                        seed=seed,
+                                        num_params_to_fit = num_params_to_fit)
     
     # steps return by agent here are much longer
     #  and fitting would take quite long, so using lower number of steps
@@ -204,29 +90,51 @@ if __name__ == "__main__":
 
     if agent_type == 'belief':
         belief_switching_rate_start = 0.7
-        #exploration_rate_start = 0.1
-        #learning_rate_start = 0.1
+        exploration_rate_start = 0.1
+        learning_rate_start = 0.1
         #parameters = (belief_switching_rate_start,
         #                exploration_rate_start, learning_rate_start)
         #ranges = ((0.5,0.9),(0.1,0.5),(0.1,0.8))
         #bounds_obj = Bounds((0.5,0.,0.),(0.9,1.,1.))
         #belief_exploration_add_factor_start = 8
         #weak_visual_factor_start = 0.3
+        unrewarded_visual_exploration_rate_start = 0.4
         context_error_noiseSD_factor_start = 2
-        parameters = (belief_switching_rate_start,
+        if num_params_to_fit == 2:
+            parameters = (belief_switching_rate_start,
                         context_error_noiseSD_factor_start)
-                        #exploration_rate_start,
+            ranges = ((0.3,0.9),(0.5,5.))
+        elif num_params_to_fit == 3:
+            parameters = (belief_switching_rate_start,
+                        context_error_noiseSD_factor_start,
+                        exploration_rate_start)
+            ranges = ((0.3,0.9),(0.5,5.),(0.01,0.5))
+        elif num_params_to_fit == 4:
+            parameters = (belief_switching_rate_start,
+                        context_error_noiseSD_factor_start,
+                        exploration_rate_start,
+                        unrewarded_visual_exploration_rate_start)
+                        #learning_rate_start)
                         #weak_visual_factor_start)
                         #belief_exploration_add_factor_start)
-        #ranges = ((0.5,0.9),(0.1,0.4),(3,10))
-        #ranges = ((0.5,0.9),(0.1,0.4),(0.1,0.5))
-        ranges = ((0.3,0.9),(0.5,5.))
+            ranges = ((0.3,0.9),(0.5,5.),(0.01,0.5),(0.01,0.6))
+
     elif agent_type == 'basic':
-        exploration_rate_start = 0.1
-        learning_rate_start = 0.1
-        parameters = (exploration_rate_start, learning_rate_start)
-        ranges = ((0.1,0.5),(0.1,0.9))
-        bounds_obj = Bounds((0.,0.),(1.,1.))
+        if num_params_to_fit == 2:
+            exploration_rate_start = 0.1
+            learning_rate_start = 0.1
+            parameters = (exploration_rate_start, learning_rate_start)
+            ranges = ((0.1,0.5),(0.1,0.9))
+            #bounds_obj = Bounds((0.,0.),(1.,1.))
+        elif num_params_to_fit == 3:
+            exploration_rate_start = 0.1
+            learning_rate_start = 0.9
+            unrewarded_visual_exploration_rate_start = 0.4
+            parameters = (exploration_rate_start, 
+                            learning_rate_start,
+                            unrewarded_visual_exploration_rate_start)
+            ranges = ((0.01,0.5),(0.1,1.0),(0.01,0.6))
+
     else:
         print('Unimplemented agent type: ',agent_type)
         sys.exit(1)
@@ -270,11 +178,11 @@ if __name__ == "__main__":
     #  so once grid point minimum is found,
     #  fmin searches locally around this, using best grid point as a starting value
     #  can set finish=None to just return the best grid point
-    result = brute(meansquarederror, ranges=ranges, 
+    result = brute(run_and_mse, ranges=ranges, 
                         args=(agent_type, agent, steps,
                         mean_probability_action_given_stimulus_o2v,
                         mean_probability_action_given_stimulus_v2o,
-                        fit_rewarded_stimuli_only),
-                        Ns=5, full_output=True, disp=True, workers=1)
+                        fit_rewarded_stimuli_only, num_params_to_fit, half_window, seed),
+                        Ns=5, full_output=True, disp=True, workers=1, finish=None)
 
     print(result)

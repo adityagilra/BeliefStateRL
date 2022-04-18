@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 
 from exp_data_analysis import get_exp_reward_around_transition
 from BeliefHistoryTabularRL import BeliefHistoryTabularRL
+from utils import meansquarederror,  process_transitions
 
 # reproducible random number generation
 seed = 1
@@ -19,96 +20,6 @@ np.random.seed(seed)
 
 # number of steps on each side of the transition to consider
 half_window = 30
-
-def process_transitions(exp_step, block_vector_exp_compare,
-                        reward_vector_exp_compare, 
-                        stimulus_vector_exp_compare,
-                        action_vector_exp_compare,
-                        context_record, mismatch_error_record,
-                        O2V=True):
-    # exp_step, at end of time loop above, equals end index saved in _exp_compare vectors
-    # clip vector at exp_step, to avoid detecting a last spurious transtion in block_vector_exp_compare
-
-    # processing after agent simulation has ended
-    # calculate mean reward and mean action given stimulus, around transitions
-    transitions = \
-        np.where(np.diff(block_vector_exp_compare[:exp_step])==(-1 if O2V else 1))[0] + 1
-    # note that block number changes on the first time step of a new trial,
-    # debug print
-    #print(('O2V' if O2V else 'V2O')+" transition at steps ",transitions)
-    
-    average_reward_around_transition = np.zeros(half_window*2+1)
-    actionscount_to_stimulus = np.zeros((6,half_window*2+1,2)) # 6 stimuli, 2 actions
-    context = np.zeros((half_window*2+1,len(context_record[0])))
-    mismatch_error = np.zeros((half_window*2+1,len(context_record[0])))
-    mismatch_by_perfectswitch = [[],[]]
-    num_transitions_averaged = 0
-    for transition in transitions:
-        # take edge effects into account when taking a window around transition
-        # i.e. don't go beyond the start and end of saved data if transition is close to an edge
-        window_min = max((0,transition-half_window))
-        # exp_step, at end of time loop above, equals end index saved in _exp_compare vectors
-        window_max = min((transition+half_window+1,exp_step))
-        window_start = window_min-(transition-half_window)
-        window_end = window_max-(transition-half_window)
-        average_reward_around_transition[window_start:window_end] \
-                += reward_vector_exp_compare[window_min:window_max]
-
-        # debug print
-        #print(('O2V' if O2V else 'V2O'), transition,
-        #        stimulus_vector_exp_compare[transition-5:transition+5],
-        #        action_vector_exp_compare[transition-5:transition+5])
-
-        ######### actions given stimuli around transition
-        for stimulus_number in range(1,7):
-            # bitwise and takes precedence over equality testing, so need brackets
-            # stimuli are saved in experiment as 1 to 6
-            # since not all time steps will have a particular stimulus,
-            #  I encode lick as 1, no lick (with stimulus) as -1, and no stimulus as 0 
-            actionscount_to_stimulus[stimulus_number-1,window_start:window_end,0] += \
-                   (stimulus_vector_exp_compare[window_min:window_max]==stimulus_number) \
-                            & (action_vector_exp_compare[window_min:window_max]==0)
-            actionscount_to_stimulus[stimulus_number-1,window_start:window_end,1] += \
-                   (stimulus_vector_exp_compare[window_min:window_max]==stimulus_number) \
-                            & (action_vector_exp_compare[window_min:window_max]==1)
-
-            # debug print
-            #print(stimulus_number,
-            #        actionscount_to_stimulus[stimulus_number-1,half_window-5:half_window+5,0],
-            #        actionscount_to_stimulus[stimulus_number-1,half_window-5:half_window+5,1])
-            
-            if O2V:
-                second_trial_idx = transition + 1
-                correct_action = 1
-            else:
-                second_trial_idx = transition + 2
-                correct_action = 0
-            # error in both contexts is taken into account -- np.abs() to neglect direction information
-            if action_vector_exp_compare[second_trial_idx] == correct_action:
-                mismatch_by_perfectswitch[1].append( np.abs(mismatch_error_record[second_trial_idx-1]) )
-            else:
-                mismatch_by_perfectswitch[0].append( np.abs(mismatch_error_record[second_trial_idx-1]) )
-
-        context[window_start:window_end,:] += context_record[window_min:window_max,:]
-        mismatch_error[window_start:window_end,:] += mismatch_error_record[window_min:window_max,:]
-
-        num_transitions_averaged += 1
-    average_reward_around_transition /= num_transitions_averaged
-
-    # normalize over the actions (last axis i.e. -1) to get probabilities
-    # do not add a small amount to denominator to avoid divide by zero!
-    # allowing nan so that irrelvant time steps are not plotted
-    probability_action_given_stimulus = actionscount_to_stimulus \
-                / np.sum(actionscount_to_stimulus,axis=-1)[:,:,np.newaxis] #\
-                        #+ np.finfo(np.double).eps )
-
-    context /= num_transitions_averaged
-    mismatch_error /= num_transitions_averaged
-
-    return average_reward_around_transition, \
-                actionscount_to_stimulus, \
-                probability_action_given_stimulus, \
-                context, mismatch_error, mismatch_by_perfectswitch
 
 def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
                                         exp_mean_probability_action_given_stimulus,
@@ -218,7 +129,7 @@ def plot_mismatch_vs_perfectswitch(mismatch_by_perfectswitch_o2v, mismatch_by_pe
     ax[1].set_ylabel('mismatch error V2O')
     fig.tight_layout()
 
-def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
+def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None, num_params_to_fit = 3):
     # use one of these environments,
     #  with or without blank state at start of each trial
     # OBSOLETE - with blanks environment won't work,
@@ -226,6 +137,7 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
     #env = gym.make('visual_olfactory_attention_switch-v0')
     # HARDCODED these observations to stimuli encoding
     env = gym.make('visual_olfactory_attention_switch_no_blank-v0',
+                    reward_size=1., punish_factor=1.,
                     lick_without_reward_factor=1.)
 
     ############# agent instatiation and agent parameters ###########
@@ -244,24 +156,35 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
         # with history=0 and beliefRL=False, need to keep learning always on!
         #steps = 1000000
         steps = 2000000
-        ### 2-param fit using brute to minimize mse,
-        #  ended without success, due to exceeding max func evals
-        #epsilon, alpha = 0.21886517, 0.72834129
-        ## does not give a sudden peak/lick in /+V stimulus in V2O transition
-        #epsilon, alpha = 0.2, 0.2
-        ### 2-param fit using brute to minimize mse,
-        #  fitting nan-s to nan-s [update: was bug here], terminated successfully
-        #epsilon, alpha = 0.21947144, 0.76400787
-        ### 2-param fit to only 'rewarded' stimuli +v, /+v, +o
-        #  (though /+v i.e. +v in odor block is not rewarded!)
-        #  i.e. we avoid fitting to stimuli -v, /-v and -o
-        #  which are not rewarded and the punishment value is unclear.
-        #  with bug-fixed nan-s to nan-s fitting,
-        epsilon, alpha = 0.21976563, 0.96556641 # fit p(lick|stimuli) for only reward-structure-known stimuli # exploration on during testing # fitted successfully with mse = 0.005474
-        #epsilon, alpha = 0.20625835, 0.9112167 # fit p(lick|stimuli) for all stimuli # exploration on during testing # fitted successfully with mse = 0.004342
+
+        num_params_to_fit = 3
+        if num_params_to_fit == 2:
+            ### 2-param fit using brute to minimize mse,
+            #  ended without success, due to exceeding max func evals
+            #epsilon, alpha = 0.21886517, 0.72834129
+            ## does not give a sudden peak/lick in /+V stimulus in V2O transition
+            #epsilon, alpha = 0.2, 0.2
+            ### 2-param fit using brute to minimize mse,
+            #  fitting nan-s to nan-s [update: was bug here], terminated successfully
+            #epsilon, alpha = 0.21947144, 0.76400787
+            ### 2-param fit to only 'rewarded' stimuli +v, /+v, +o
+            #  (though /+v i.e. +v in odor block is not rewarded!)
+            #  i.e. we avoid fitting to stimuli -v, /-v and -o
+            #  which are not rewarded and the punishment value is unclear.
+            #  with bug-fixed nan-s to nan-s fitting,
+            epsilon, alpha = 0.21976563, 0.96556641 # fit p(lick|stimuli) for only reward-structure-known stimuli # exploration on during testing # fitted successfully with mse = 0.005474
+            #epsilon, alpha = 0.20625835, 0.9112167 # fit p(lick|stimuli) for all stimuli # exploration on during testing # fitted successfully with mse = 0.004342
+            #unrewarded_visual_exploration_rate = 0.4
+        else:
+            ### 3-param fit using brute to minimize mse,
+            epsilon, alpha, unrewarded_visual_exploration_rate = 0.2, 0.53958333, 0.29758681
+            # mse = 0.004276240120155456, did not fit -- max func evals exceeded, fit all 4 curves.
+
         learning_during_testing = True
+        params_all = ((epsilon, alpha, unrewarded_visual_exploration_rate), learning_during_testing)
         agent = BeliefHistoryTabularRL(env,history=0,beliefRL=False,
                                         alpha=alpha,epsilon=epsilon,seed=seed,
+                                        unrewarded_visual_exploration_rate=unrewarded_visual_exploration_rate,
                                         learning_during_testing=learning_during_testing)
     elif agent_type=='history1_nobelief':
         # with history=1 and beliefRL=False, no need to keep learning always on!
@@ -312,43 +235,80 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
         
         # noise could also be from context error signal in the ACC parametrized by a context_error_noiseSD_factor
         if context_sampling:
-            belief_switching_rate, context_error_noiseSD_factor \
-                        = 0.45787308, 3.50795822 # fit p(lick|stimuli) for only reward-structure-known stimuli # exploration off during testing, & context_sampling=True # mse = = 0.001151
-            #belief_switching_rate, context_error_noiseSD_factor \
-            #            = 0.594375  , 4.26855469 # fit p(lick|stimuli) for all 4 stimuli # exploration off during testing, & context_sampling=True # mse = 0.004001
-            epsilon, exploration_add_factor_for_context_uncertainty, alpha \
-                        = 0.1, 0, 0.1
+            if num_params_to_fit == 2:
+                belief_switching_rate, context_error_noiseSD_factor \
+                            = 0.45787308, 3.50795822 # fit p(lick|stimuli) for only reward-structure-known stimuli # exploration off during testing, & context_sampling=True # mse = = 0.001151
+                #belief_switching_rate, context_error_noiseSD_factor \
+                #            = 0.594375  , 4.26855469 # fit p(lick|stimuli) for all 4 stimuli # exploration off during testing, & context_sampling=True # mse = 0.004001
+                epsilon, exploration_add_factor_for_context_uncertainty, alpha = 0.1, 0, 0.1
+                unrewarded_visual_exploration_rate = 0.4
 
-            #context_error_noiseSD_factor = 0.            
-            ##belief_switching_rate, epsilon, exploration_add_factor_for_context_uncertainty, alpha \
-            ##            = 0.6, 0.1, 0, 0.1
+                #context_error_noiseSD_factor = 0.            
+                ##belief_switching_rate, epsilon, exploration_add_factor_for_context_uncertainty, alpha \
+                ##            = 0.6, 0.1, 0, 0.1
 
-            ## obtained by 3-param fit using brute minimize mse
-            ##  with nan-errors i.e. nan-s matched with nan-s, else error ~ 1 per nan [with bug]
-            ##  alpha fixed at 0.1 for the fitting
-            ## params used for CoSyNe abstract
-            #belief_switching_rate, epsilon, exploration_add_factor_for_context_uncertainty, alpha \
-            #            = 0.54162102, 0.09999742, 8.2049604, 0.1
+            elif num_params_to_fit == 3:
+                ## obtained by 3-param fit using brute minimize mse
+                ##  with nan-errors i.e. nan-s matched with nan-s, else error ~ 1 per nan [with bug]
+                ##  alpha fixed at 0.1 for the fitting
+                ## params used for CoSyNe abstract
+                belief_switching_rate, epsilon, exploration_add_factor_for_context_uncertainty, alpha \
+                            = 0.54162102, 0.09999742, 8.2049604, 0.1
+
+            elif num_params_to_fit == 3:
+                ##### obtained by 4-param fit
+                belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
+                            = 0.3013795 , 1.6326803 , 0.37694708, 0.62256759 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # mse = 0.0017315496769514552, reward structure 1, 1, 1, max func evals exceeded -- did not fit
+                exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
+
         else:
-            # obtained by 2-param fit -- note: switching rate is at the border of allowed, so redo
-            belief_switching_rate, context_error_noiseSD_factor \
-                        = 0.30890625, 2.01875 # fit p(lick|stimuli) for only reward-structure-known stimuli # exploration on during testing, & context_sampling=False
-                        #= 0.285, 2.1 fit p(lick|stimuli) for all stimuli (buggy nan-s fitting) # exploration on during testing, and context_sampling is False
-                        ##= 0.490625, 3.065625
-                        #= 0.18940429, 1.34079591 # # fit p(lick|stimuli) for only reward-structure-known stimuli # exploration off during testing, & context_sampling=True
-                        #= 0.86282212, 3.09287167 # fit p(lick|stimuli) for all stimuli # exploration off during testing, & context_sampling=True
-            epsilon, exploration_add_factor_for_context_uncertainty, alpha \
-                        = 0.1, 0, 0.1
+            if num_params_to_fit == 2:
+                ##### obtained by 2-param fit -- note: switching rate is at the border of allowed, so redo
+                ##belief_switching_rate, context_error_noiseSD_factor \
+                ##           = 0.30890625, 2.01875 # fit p(lick|stimuli) for only reward-structure-known stimuli # exploration on during testing, & context_sampling=False, reward structure 10, 0.5, 1
+                             #= 0.285, 2.1 fit p(lick|stimuli) for all stimuli (buggy nan-s fitting) # exploration on during testing, and context_sampling is False, reward structure 10, 0.5, 1
+                             ##= 0.490625, 3.065625
+                 
+                belief_switching_rate, context_error_noiseSD_factor \
+                            = 0.43417968, 4.13535097 # fit p(lick|stimuli) for only reward-structure known stimuli # exploration on during testing, & context_sampling=False # mse = 0.0006851, reward structure 1, 1, 1
+                            #= 0.45844917, 2.71556625 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # mse = 0.004846, reward structure 1, 1, 1
 
-        learning_during_testing = False
+                            #= 0.18940429, 1.34079591 # # fit p(lick|stimuli) for only reward-structure-known stimuli # exploration off during testing, & context_sampling=True
+                            #= 0.86282212, 3.09287167 # fit p(lick|stimuli) for all stimuli # exploration off during testing, & context_sampling=True
+                epsilon, exploration_add_factor_for_context_uncertainty, alpha \
+                            = 0.1, 0, 0.1
+
+            elif num_params_to_fit == 3:
+                ##### obtained by 3-param fit
+                belief_switching_rate, context_error_noiseSD_factor, epsilon \
+                            = 0.3172727, 4.61738219, 0.01069627 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # mse = 0.003145373498646748, reward structure 1, 1, 1
+                exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
+
+            elif num_params_to_fit == 4:
+                ##### obtained by 4-param fit
+                belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
+                            = 0.46048665, 4.90591006, 0.51447091, 0.44796221 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # mse = 0.0021553571995931737, reward structure 1, 1, 1, max func evals exceeded -- did not fit
+                exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
+
+                #belief_switching_rate, context_error_noiseSD_factor, epsilon, alpha \
+                #            = 0.3021444 , 0.50150228, 0.49937703, 0.13204827 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # mse = 0.002568355577903245, reward structure 1, 1, 1
+                #exploration_add_factor_for_context_uncertainty = 0
+
+        # choose one of the below, typically learning is off during testing
+        #learning_during_testing = False
+        # keep exploration & learning always on (e.g. to match mouse exploration)
+        learning_during_testing = True
+        
         # choose one of the two below:
         #exploration_is_modulated_by_context_uncertainty = True
         exploration_is_modulated_by_context_uncertainty = False
         if exploration_is_modulated_by_context_uncertainty:
-            # keep exploration & learning always on
-            #  for noise and belief uncertainty driven exploration
+            # learning should be on for exploration driven by belief uncertainty
             learning_during_testing = True
 
+        params_all = ( (belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate,
+                                exploration_add_factor_for_context_uncertainty, alpha),
+                         learning_during_testing, context_sampling )
         agent = BeliefHistoryTabularRL(env,history=0,beliefRL=True,
                                         belief_switching_rate=belief_switching_rate,
                                         ACC_off_factor = ACC_off_factor,
@@ -356,18 +316,29 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None):
                                         learning_during_testing=learning_during_testing,
                                         context_sampling = context_sampling,
                                         context_error_noiseSD_factor = context_error_noiseSD_factor,
+                                        unrewarded_visual_exploration_rate = unrewarded_visual_exploration_rate,
                                         exploration_is_modulated_by_context_uncertainty=\
                                             exploration_is_modulated_by_context_uncertainty,
                                         exploration_add_factor_for_context_uncertainty=\
                                             exploration_add_factor_for_context_uncertainty)
 
-    return env, agent, steps
+    return env, agent, steps, params_all
 
 if __name__ == "__main__":
 
     ############## choose / uncomment one of the agents below! #################
-    agent_type='belief'
-    #agent_type='basic'
+    #agent_type='belief'
+    agent_type='basic'
+
+    # choose one of the below
+    #num_params_to_fit = 2 # for both basic and belief RL
+    num_params_to_fit = 3 # for both basic and belief RL
+    #num_params_to_fit = 4 # only for belief RL
+
+    # choose one of the two below, either fit only rewarded stimuli (+v, /+v, +o),
+    #  or both rewarded and unrewarded (internally rewarded) stimuli,
+    #fit_rewarded_stimuli_only = True
+    fit_rewarded_stimuli_only = False
     
     # choose whether ACC is inhibited or not
     #ACC_off = True
@@ -380,8 +351,11 @@ if __name__ == "__main__":
         ACC_str = 'control'
     
     # Instantiate the env and the agent
-    env, agent, steps = get_env_agent(agent_type, ACC_off_factor, seed=seed)
+    num_params_to_fit = 3
+    env, agent, steps, params_all = get_env_agent(agent_type, ACC_off_factor, seed=seed,
+                                                 num_params_to_fit=num_params_to_fit)
     
+    np.random.seed(seed)
     # train the RL agent on the task
     exp_step, block_vector_exp_compare, \
         reward_vector_exp_compare, stimulus_vector_exp_compare, \
@@ -389,7 +363,7 @@ if __name__ == "__main__":
                 agent.train(steps)
 
     print('Q-values dict {state: context x action} = ',agent.Q_array)
-
+    
     detailed_plots = False
     abstract_plots = True#False
 
@@ -415,7 +389,7 @@ if __name__ == "__main__":
                                 stimulus_vector_exp_compare,
                                 action_vector_exp_compare,
                                 context_record, mismatch_error_record,
-                                O2V = True)
+                                O2V = True, half_window=half_window)
 
     if detailed_plots:
         fig3 = plt.figure()
@@ -473,7 +447,7 @@ if __name__ == "__main__":
                                 stimulus_vector_exp_compare,
                                 action_vector_exp_compare,
                                 context_record, mismatch_error_record,
-                                O2V = False)
+                                O2V = False, half_window=half_window)
 
     plot_prob_actions_given_stimuli(probability_action_given_stimulus_v2o,
                                     mean_probability_action_given_stimulus_v2o,
@@ -483,5 +457,18 @@ if __name__ == "__main__":
                                     trans='V2O')
 
     plot_mismatch_vs_perfectswitch(mismatch_by_perfectswitch_o2v, mismatch_by_perfectswitch_v2o)
+
+    if agent_type == 'basic':
+        print( "(epsilon, alpha, unrewarded_visual_exploration_rate), learning_during_testing)", params_all )
+    else:
+        print( """(belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate,
+                                exploration_add_factor_for_context_uncertainty, alpha),
+                         learning_during_testing, context_sampling )""", params_all )
+    print( 'Mean squared error = ', 
+                meansquarederror(mean_probability_action_given_stimulus_o2v,
+                                mean_probability_action_given_stimulus_v2o,
+                                probability_action_given_stimulus_o2v,
+                                probability_action_given_stimulus_v2o,
+                                fit_rewarded_stimuli_only) )
 
     plt.show()

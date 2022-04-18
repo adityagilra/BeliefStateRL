@@ -113,6 +113,7 @@ def get_exp_reward_around_transition(trans='O2V',ACC='control',
     across_mice_average_reward = np.zeros(window)
     mice_actionscount_to_stimulus = np.zeros((number_of_mice,6,window,2)) # 6 stimuli, 2 actions
     mice_actionscount_to_stimulus_trials = np.zeros((number_of_mice,6,window,2)) # 6 stimuli, 2 actions
+    sessions_actionscount_to_stimulus = [[[],[]],[[],[]],[[],[]],[[],[]],[[],[]],[[],[]]] # 6 stimuli, 2 actions
 
     for mouse_number in mice_list:
         # steps around transitions for one mouse
@@ -167,14 +168,17 @@ def get_exp_reward_around_transition(trans='O2V',ACC='control',
             for session_index in sessions_list_thismouse:
                 ##### steps around transition
                 ##### not all time steps will have a particular stimulus!
-                mice_actionscount_to_stimulus[mouse_number,stimulus_index,:,0] += \
-                       (transition_stimuli[session_index,:]==stimulus_index+1) \
+                stim_nolick = (transition_stimuli[session_index,:]==stimulus_index+1) \
                                 & (transition_corrects[session_index,:]==lick_to_correct[0])
-                mice_actionscount_to_stimulus[mouse_number,stimulus_index,:,1] += \
-                       (transition_stimuli[session_index,:]==stimulus_index+1) \
+                stim_lick = (transition_stimuli[session_index,:]==stimulus_index+1) \
                                 & (transition_corrects[session_index,:]==lick_to_correct[1])
+                mice_actionscount_to_stimulus[mouse_number,stimulus_index,:,0] += stim_nolick
+                mice_actionscount_to_stimulus[mouse_number,stimulus_index,:,1] += stim_lick
+                # for mean and SD:
+                sessions_actionscount_to_stimulus[stimulus_index][0].append(stim_nolick)
+                sessions_actionscount_to_stimulus[stimulus_index][1].append(stim_lick)
 
-                ##### trials around transition
+                ##### trials around transition -- since an olfactory trial may have 1 or 2 'steps' (cf. above)
                 ##### convert from steps to trials for each session, while maintaining transition index at the center
                 # we pick time steps involving visual stimuli only or olfactory stimuli only
                 #  if stimulus_index denotes a visual or olfactory stimulus respectively
@@ -208,14 +212,45 @@ def get_exp_reward_around_transition(trans='O2V',ACC='control',
     across_mice_average_reward /= number_of_mice
 
     # normalize over the actions (last axis i.e. -1) to get probabilities
-    # do not add a small amount to denominator to avoid divide by zero!
-    # allowing nan so that irrelvant time steps are not plotted
+    # do not add a small amount to denominator to avoid divide by zero
+    #  since I am allowing nan-s so that irrelvant time steps are not plotted,
+    #  and for fitting nan-s as well
     mice_probability_action_given_stimulus = mice_actionscount_to_stimulus \
                 / np.sum(mice_actionscount_to_stimulus,axis=-1)[:,:,:,np.newaxis] #\
                         #+ np.finfo(np.double).eps )
-    mean_probability_action_given_stimulus = np.sum(mice_actionscount_to_stimulus,axis=0) \
-                / np.sum(mice_actionscount_to_stimulus,axis=(0,-1))[:,:,np.newaxis] #\
-                        #+ np.finfo(np.double).eps )    
+
+    ## obsolete mean (was only keeping mouse resolution, want session resolution for SD) -- replaced below
+    #mean_probability_action_given_stimulus = np.sum(mice_actionscount_to_stimulus,axis=0) \
+    #            / np.sum(mice_actionscount_to_stimulus,axis=(0,-1))[:,:,np.newaxis] #\
+    #                    #+ np.finfo(np.double).eps )
+
+    # mean across all mice and sessions
+    # should not just take mean across sessions, as each session has variable number of trials
+    # rather divide by total number of actions taken for each stimulus.
+    #  i.e. normalize lick & nolick counts to give probability
+    # sessions_actionscount_to_stimulus has dimensions stimuli x actions x sessions x window
+    mean_probability_action_given_stimulus = \
+        np.sum(sessions_actionscount_to_stimulus,axis=2) \
+                / np.sum(sessions_actionscount_to_stimulus,axis=(1,2))[:,np.newaxis,:]
+    # SD in p(lick|stimulus) of a session compared to mean across all mice and sessions
+    # p(lick|session) separately for each session, normalize lick & nolick counts to give probability
+    # most of these are nan-s as in a session, as there are only 2-4 transitions,
+    #  and then each time step in the window doesn't have each of the 6 stimuli, so nan for that stimulus
+    sessions_probability_action_given_stimulus = \
+        sessions_actionscount_to_stimulus \
+                    / np.sum(sessions_actionscount_to_stimulus,axis=1)[:,np.newaxis,:,:]
+    # SD of above, but even one nan above makes the SD nan for that time step, hence mostly nan-s.
+    deviation = sessions_probability_action_given_stimulus \
+                    - mean_probability_action_given_stimulus[:,:,np.newaxis,:]
+    SD_probability_action_given_stimulus = np.std(deviation,axis=2)
+
+    # swap window and action axes, to keep returned variable consistent with before
+    mean_probability_action_given_stimulus = \
+        np.swapaxes(mean_probability_action_given_stimulus,1,2)
+    # swap window and action axes, to keep returned variable consistent with before
+    SD_probability_action_given_stimulus = \
+        np.swapaxes(SD_probability_action_given_stimulus,1,2)
+    # not worth returning the SD, as mostly nan-s!
 
     return (number_of_mice, across_mice_average_reward,
                 mice_average_reward_around_transtion,
@@ -275,6 +310,13 @@ def plot_prob_actions_given_stimuli(units='steps', trans='O2V'):
                             [stimulus_index,:,1], marker='.',
                             color=colors[stimulus_index],
                             label=labels[stimulus_index])
+        # SD has mostly nan-s, so no point plotting
+        #axall.fill_between(xvec, 
+        #        mean_probability_action_given_stimulus[stimulus_index,:,1]-\
+        #                SD_probability_action_given_stimulus[stimulus_index,:,1],\
+        #        mean_probability_action_given_stimulus[stimulus_index,:,1]+\
+        #                SD_probability_action_given_stimulus[stimulus_index,:,1],\
+        #        color=colors[stimulus_index],alpha=0.2)
         axall.set_xlabel(units+' around '+trans+' transition')
         axall.set_ylabel('P(lick|stimulus)')
         axall.set_xlim([-window//2+1,window//2+1])
@@ -352,8 +394,8 @@ def analyse_neural_mismatch():
 
 if __name__ == "__main__":
     # choose control for ACC not inhibited, exp for ACC inhibited
-    #ACC = 'control'
-    ACC = 'exp'
+    ACC = 'control'
+    #ACC = 'exp'
     
     number_of_mice, across_mice_average_reward, \
         mice_average_reward_around_transtion, \
