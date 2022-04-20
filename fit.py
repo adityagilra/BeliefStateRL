@@ -2,20 +2,26 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from exp_data_analysis import get_exp_reward_around_transition
-from BeliefHistoryTabularRLSimulate import get_env_agent, half_window
-from utils import run_and_mse
+from BeliefHistoryTabularRLSimulate import get_env_agent
+from utils import simulate_and_mse
 import sys
 from scipy.optimize import minimize, Bounds, brute
+from plot_simulation_data import half_window
 
 if __name__ == "__main__":
 
-    #agent_type = 'belief'
-    agent_type = 'basic'
+    agent_type = 'belief'
+    #agent_type = 'basic'
     
-    # choose one of the below
-    #num_params_to_fit = 2 # for both basic and belief RL
-    num_params_to_fit = 3 # for both basic and belief RL
-    #num_params_to_fit = 4 # only for belief RL
+    if agent_type == 'basic':
+        # choose one of the below
+        #num_params_to_fit = 2 # for both basic and belief RL
+        num_params_to_fit = 3 # for both basic and belief RL
+    else:
+        # choose one of the below
+        #num_params_to_fit = 2 # for both basic and belief RL
+        #num_params_to_fit = 3 # for both basic and belief RL
+        num_params_to_fit = 4 # only for belief RL
 
     # choose one of the two below, either fit only rewarded stimuli (+v, /+v, +o),
     #  or both rewarded and unrewarded (internally rewarded) stimuli,
@@ -140,7 +146,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # local & global optimization are possible
-    #  https://docs.scipy.org/doc/scipy/reference/tutorial/optimize.html
+    #  https://docs.scipy.org/doc/scipy/reference/optimize.html
     #  https://docs.scipy.org/doc/scipy/reference/reference/optimize.html#module-scipy.optimize
     
     # local optimization
@@ -171,18 +177,28 @@ if __name__ == "__main__":
     #  brute force: https://docs.scipy.org/doc/scipy/reference/reference/generated/scipy.optimize.brute.html#scipy.optimize.brute
     #  etc.
     
-    # Ns specify how to divide the grid.
-    # workers=-1 means use all cores available to this process,
-    #  but this requires the function to be pickleable, which isn't the case for me, so only 1 worker.
-    # Looks like the 'finish' argument is scipy.optimize.fmin by default,
-    #  so once grid point minimum is found,
-    #  fmin searches locally around this, using best grid point as a starting value
-    #  can set finish=None to just return the best grid point
-    result = brute(run_and_mse, ranges=ranges, 
+    ## Ns specifies how many points per dimension for the grid.
+    ## workers=-1 means use all cores available to this process,
+    ##  but this requires the function to be pickleable, which isn't the case for me, so only 1 worker.
+    ## Looks like the 'finish' argument is scipy.optimize.fmin by default,
+    ##  so once grid point minimum is found,
+    ##  fmin searches locally around this, using best grid point as a starting value
+    ##  can set finish=None to just return the best point on the grid
+    #result = brute(simulate_and_mse, ranges=ranges, 
+    #                    args=(agent_type, agent, steps,
+    #                    mean_probability_action_given_stimulus_o2v,
+    #                    mean_probability_action_given_stimulus_v2o,
+    #                    fit_rewarded_stimuli_only, num_params_to_fit, half_window, seed),
+    #                    Ns=5, full_output=True, disp=True, workers=1)
+
+    # Brute optimization is too slow; and compared to a coarse grid, manual tuning is better!
+    # Set good starting parameters manually and then do local optimization
+    result = minimize( simulate_and_mse, parameters,
                         args=(agent_type, agent, steps,
-                        mean_probability_action_given_stimulus_o2v,
-                        mean_probability_action_given_stimulus_v2o,
-                        fit_rewarded_stimuli_only, num_params_to_fit, half_window, seed),
-                        Ns=5, full_output=True, disp=True, workers=1, finish=None)
+                                mean_probability_action_given_stimulus_o2v,
+                                mean_probability_action_given_stimulus_v2o,
+                                fit_rewarded_stimuli_only, num_params_to_fit, half_window, seed),
+                        method='COBYLA', options={'tol':0.005, 'rhobeg':0.05, 'disp':True}
+                        )
 
     print(result)

@@ -9,125 +9,15 @@ import numpy as np
 import gym_tasks
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import scipy.io as scipyio
 
-from exp_data_analysis import get_exp_reward_around_transition
 from BeliefHistoryTabularRL import BeliefHistoryTabularRL
 from utils import meansquarederror,  process_transitions
+from plot_simulation_data import load_plot_simdata
 
 # reproducible random number generation
 seed = 1
 np.random.seed(seed)
-
-# number of steps on each side of the transition to consider
-half_window = 30
-
-def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
-                                        exp_mean_probability_action_given_stimulus,
-                                        context, mismatch_error,
-                                        detailed_plots, abstract_plots,
-                                        agent_type='',
-                                        units='steps', trans='O2V'):    
-    # debug print
-    #for stimulus_index in range(6):
-    #    print(stimulus_index+1,\
-    #            probability_action_given_stimulus\
-    #                [stimulus_index,half_window-5:half_window+5,1])
-    #    print(stimulus_index+1,
-    #            actionscount_to_stimulus\
-    #                [stimulus_index,half_window-5:half_window+5,1],\
-    #            np.sum(actionscount_to_stimulus\
-    #                [stimulus_index,half_window-5:half_window+5,:],axis=-1))
-
-    xvec = range(-half_window,half_window+1)
-    if detailed_plots:
-        fig, axes = plt.subplots(2,3)
-    figall, axall = plt.subplots(1,2)
-    #figall = plt.figure()
-    #axall = figall.add_axes([0.1, 0.1, 0.9, 0.9])
-    # dotted vertical line for transition
-    axall[0].plot([0,0],[0,1],',k',linestyle='--')
-    axall[1].plot([0,0],[0,1],',k',linestyle='--')
-    #colors = ['r','g','y','c','b','m']
-    colors = ['b','r','b','r','g','y']
-    labels = ['+v','-v','/+v','/-v','+o','-o']
-
-    if abstract_plots:
-        figabstract, axabstract = plt.subplots(1,1)
-        axabstract.plot([0,0],[0,1],',k',linestyle='--')
-
-    for stimulus_index in range(6):
-        if detailed_plots:
-            row = stimulus_index//3
-            col = stimulus_index%3
-            axes[row,col].plot([0,0],[0,1],',-g')
-            axes[row,col].plot(xvec, probability_action_given_stimulus\
-                                        [stimulus_index,:,0],'.-r',label='nolick')
-            axes[row,col].plot(xvec, probability_action_given_stimulus\
-                                        [stimulus_index,:,1],'.-b',label='lick')
-            axes[row,col].set_xlabel(units+' around '+trans+' transition')
-            axes[row,col].set_ylabel('P(action|stimulus='+str(stimulus_index+1)+')')
-            axes[row,col].set_xlim([-half_window,half_window])
-
-        # lick probability given stimuli all in one axes
-        axall[0].plot(xvec,exp_mean_probability_action_given_stimulus\
-                            [stimulus_index,:,1], marker='x',
-                            color=colors[stimulus_index],
-                            label=labels[stimulus_index])
-        axall[0].plot(xvec,probability_action_given_stimulus\
-                            [stimulus_index,:,1], marker='.',
-                            color=colors[stimulus_index],
-                            linestyle='dotted',
-                            label=labels[stimulus_index])
-        axall[0].set_xlabel(units+' around '+trans+' transition')
-        axall[0].set_ylabel('P(lick|stimulus)')
-        axall[0].set_xlim([-half_window,half_window])
-
-        if abstract_plots:
-            axabstract.plot(xvec,probability_action_given_stimulus\
-                                [stimulus_index,:,1], marker='.',
-                                color=colors[stimulus_index],
-                                linestyle='solid',
-                                label=labels[stimulus_index])
-            axabstract.set_xlabel(units+' around '+trans+' transition')
-            axabstract.set_ylabel('P(lick|stimulus)')
-            axabstract.set_xlim([-half_window,half_window])
-
-    if agent_type=='belief':
-        # context beliefs and mismatch (context prediction error) signals
-        axall[1].plot(xvec,context[:,0],',-c',label='vis')
-        axall[1].plot(xvec,context[:,1],',-m',label='olf')
-        axall[1].plot(xvec,mismatch_error[:,0],',c',linestyle='dotted',label='vis_mis')
-        axall[1].plot(xvec,mismatch_error[:,1],',m',linestyle='dotted',label='olf_mis')
-        axall[1].set_xlabel(units+' around '+trans+' transition')
-        axall[1].set_ylabel('Belief prob (solid) and mismatch error (dotted)')
-        axall[1].set_xlim([-half_window,half_window])
-
-    if detailed_plots:
-        axes[row,col].legend()
-        fig.subplots_adjust(wspace=0.5,hspace=0.5)
-    axall[0].legend()
-    axall[1].legend()
-    figall.tight_layout()
-    
-    if abstract_plots:
-        if agent_type=='belief':
-            axabstract.plot(xvec,context[:,0],',-c',label='vis')
-            axabstract.plot(xvec,context[:,1],',-m',label='olf')
-        figabstract.tight_layout()
-        figabstract.savefig('RL_'+agent_type+'_'+trans+'.pdf')
-        figabstract.savefig('RL_'+agent_type+'_'+trans+'.svg')
-
-def plot_mismatch_vs_perfectswitch(mismatch_by_perfectswitch_o2v, mismatch_by_perfectswitch_v2o):
-    fig, ax = plt.subplots(1,2)
-    ax[0].bar( ['wrong switch','correct switch'],
-                [np.mean(mismatch_by_perfectswitch_o2v[0]),np.mean(mismatch_by_perfectswitch_o2v[1])],
-                yerr=[np.std(mismatch_by_perfectswitch_o2v[0]),np.std(mismatch_by_perfectswitch_o2v[1])] )
-    ax[0].set_ylabel('mismatch error O2V')
-    ax[1].bar( ['wrong switch','correct switch'],
-                [np.mean(mismatch_by_perfectswitch_v2o[0]),np.mean(mismatch_by_perfectswitch_v2o[1])],
-                yerr=[np.std(mismatch_by_perfectswitch_v2o[0]),np.std(mismatch_by_perfectswitch_v2o[1])] )
-    ax[1].set_ylabel('mismatch error V2O')
-    fig.tight_layout()
 
 def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None, num_params_to_fit = 3):
     # use one of these environments,
@@ -157,7 +47,6 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None, num_params_
         #steps = 1000000
         steps = 2000000
 
-        num_params_to_fit = 3
         if num_params_to_fit == 2:
             ### 2-param fit using brute to minimize mse,
             #  ended without success, due to exceeding max func evals
@@ -177,8 +66,8 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None, num_params_
             #unrewarded_visual_exploration_rate = 0.4
         else:
             ### 3-param fit using brute to minimize mse,
-            epsilon, alpha, unrewarded_visual_exploration_rate = 0.2, 0.53958333, 0.29758681
-            # mse = 0.004276240120155456, did not fit -- max func evals exceeded, fit all 4 curves.
+            epsilon, alpha, unrewarded_visual_exploration_rate = 0.25618055, 0.78719931, 0.30161107
+            # mse = 0.008409035747337732, did not fit -- max func evals exceeded, fit all 4 curves.
 
         learning_during_testing = True
         params_all = ((epsilon, alpha, unrewarded_visual_exploration_rate), learning_during_testing)
@@ -255,13 +144,19 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None, num_params_
                 belief_switching_rate, epsilon, exploration_add_factor_for_context_uncertainty, alpha \
                             = 0.54162102, 0.09999742, 8.2049604, 0.1
 
-            elif num_params_to_fit == 3:
+            elif num_params_to_fit == 4:
                 ##### obtained by 4-param fit
                 belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
-                            = 0.3013795 , 1.6326803 , 0.37694708, 0.62256759 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # mse = 0.0017315496769514552, reward structure 1, 1, 1, max func evals exceeded -- did not fit
+                            = 0.7, 3., 0.05, 0.4
+                            #= 0.3013795 , 1.6326803 , 0.37694708, 0.62256759 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # mse = 0.0017315496769514552, reward structure 1, 1, 1, max func evals exceeded -- did not fit
                 exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
 
-        else:
+                ###### obtained by 4-param fit
+                #belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
+                #            = 0.46048665, 4.90591006, 0.51447091, 0.44796221 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # mse = 0.0021553571995931737, reward structure 1, 1, 1, max func evals exceeded -- did not fit
+                #exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
+
+        else: ## if context_sampling == False
             if num_params_to_fit == 2:
                 ##### obtained by 2-param fit -- note: switching rate is at the border of allowed, so redo
                 ##belief_switching_rate, context_error_noiseSD_factor \
@@ -327,13 +222,18 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None, num_params_
 if __name__ == "__main__":
 
     ############## choose / uncomment one of the agents below! #################
-    #agent_type='belief'
-    agent_type='basic'
+    agent_type='belief'
+    #agent_type='basic'
 
-    # choose one of the below
-    #num_params_to_fit = 2 # for both basic and belief RL
-    num_params_to_fit = 3 # for both basic and belief RL
-    #num_params_to_fit = 4 # only for belief RL
+    if agent_type == 'basic':
+        # choose one of the below
+        #num_params_to_fit = 2 # for both basic and belief RL
+        num_params_to_fit = 3 # for both basic and belief RL
+    else:
+        # choose one of the below
+        #num_params_to_fit = 2 # for both basic and belief RL
+        #num_params_to_fit = 3 # for both basic and belief RL
+        num_params_to_fit = 4 # only for belief RL
 
     # choose one of the two below, either fit only rewarded stimuli (+v, /+v, +o),
     #  or both rewarded and unrewarded (internally rewarded) stimuli,
@@ -351,7 +251,6 @@ if __name__ == "__main__":
         ACC_str = 'control'
     
     # Instantiate the env and the agent
-    num_params_to_fit = 3
     env, agent, steps, params_all = get_env_agent(agent_type, ACC_off_factor, seed=seed,
                                                  num_params_to_fit=num_params_to_fit)
     
@@ -363,112 +262,22 @@ if __name__ == "__main__":
                 agent.train(steps)
 
     print('Q-values dict {state: context x action} = ',agent.Q_array)
-    
-    detailed_plots = False
-    abstract_plots = True#False
 
-    ## obsolete - start
-    #fig1 = plt.figure()
-    #plt.plot(reward_vec)
-    #smooth = 20 # time steps to smooth over
-    #plt.plot(np.convolve(reward_vec,np.ones(smooth))/smooth)
-    #plt.plot(block_vector)
+    savefilename = 'simulation_data/simdata_'+agent_type+'_numparams'+str(num_params_to_fit)+'_ACC'+ACC_str+'_seed'+str(seed)+'.mat'
+    scipyio.savemat(savefilename,
+                        {'steps':steps,
+                        'params_all':params_all,
+                        'exp_step':exp_step,
+                        'fit_rewarded_stimuli_only':fit_rewarded_stimuli_only,
+                        'agent_type':agent_type,
+                        'num_params_to_fit':num_params_to_fit,
+                        'ACC_str':ACC_str,
+                        'seed':seed,
+                        'block_vector_exp_compare':block_vector_exp_compare,
+                        'reward_vector_exp_compare':reward_vector_exp_compare,
+                        'stimulus_vector_exp_compare':stimulus_vector_exp_compare,
+                        'action_vector_exp_compare':action_vector_exp_compare,
+                        'context_record':context_record,
+                        'mismatch_error_record':mismatch_error_record})    
 
-    #fig2 = plt.figure()
-    #plt.plot(cumulative_reward)
-    ## obsolete - end
-
-    # obtain the mean reward and action given stimulus around O2V transition
-    # no need to pass above variables as they are not modified, only analysed
-    average_reward_around_o2v_transition, \
-        actionscount_to_stimulus_o2v, \
-        probability_action_given_stimulus_o2v, \
-        context_o2v, mismatch_error_o2v, mismatch_by_perfectswitch_o2v = \
-            process_transitions(exp_step, block_vector_exp_compare,
-                                reward_vector_exp_compare,
-                                stimulus_vector_exp_compare,
-                                action_vector_exp_compare,
-                                context_record, mismatch_error_record,
-                                O2V = True, half_window=half_window)
-
-    if detailed_plots:
-        fig3 = plt.figure()
-        plt.plot(average_reward_around_o2v_transition)
-        plt.plot([half_window,half_window],\
-                    [min(average_reward_around_o2v_transition),\
-                        max(average_reward_around_o2v_transition)])
-        plt.xlabel('time steps around olfactory to visual transition')
-        plt.ylabel('average reward on time step')
-
-    # choose one of the two below, either load exp data for 1 session only, or for all mice, all sessions.
-    #load_a_session = True
-    load_a_session = False
-    if load_a_session:
-        mice_list = [0]
-        sessions_list = [0]
-    else:
-        mice_list = None
-        sessions_list = None
-
-    # read experimental data
-    print("reading experimental data")
-    number_of_mice, across_mice_average_reward_o2v, \
-        mice_average_reward_around_transtion_o2v, \
-        mice_actionscount_to_stimulus_o2v, \
-        mice_actionscount_to_stimulus_trials_o2v, \
-        mice_probability_action_given_stimulus_o2v, \
-        mean_probability_action_given_stimulus_o2v = \
-            get_exp_reward_around_transition(trans='O2V',ACC=ACC_str,
-                                            mice_list=mice_list,sessions_list=sessions_list)
-    number_of_mice, across_mice_average_reward_v2o, \
-        mice_average_reward_around_transtion_v2o, \
-        mice_actionscount_to_stimulus_v2o, \
-        mice_actionscount_to_stimulus_trials_v2o, \
-        mice_probability_action_given_stimulus_v2o, \
-        mean_probability_action_given_stimulus_v2o = \
-            get_exp_reward_around_transition(trans='V2O',ACC=ACC_str,
-                                            mice_list=mice_list,sessions_list=sessions_list)
-    print("finished reading experimental data.")
-
-    plot_prob_actions_given_stimuli(probability_action_given_stimulus_o2v,
-                                    mean_probability_action_given_stimulus_o2v,
-                                    context_o2v, mismatch_error_o2v,
-                                    detailed_plots, abstract_plots,
-                                    agent_type=agent_type)
-
-    # obtain the mean reward and action given stimulus around V2O transition
-    # no need to pass above variables as they are not modified, only analysed
-    average_reward_around_v2o_transition, \
-        actionscount_to_stimulus_v2o, \
-        probability_action_given_stimulus_v2o, \
-        context_v2o, mismatch_error_v2o, mismatch_by_perfectswitch_v2o = \
-            process_transitions(exp_step, block_vector_exp_compare,
-                                reward_vector_exp_compare, 
-                                stimulus_vector_exp_compare,
-                                action_vector_exp_compare,
-                                context_record, mismatch_error_record,
-                                O2V = False, half_window=half_window)
-
-    plot_prob_actions_given_stimuli(probability_action_given_stimulus_v2o,
-                                    mean_probability_action_given_stimulus_v2o,
-                                    context_v2o, mismatch_error_v2o,
-                                    detailed_plots, abstract_plots,
-                                    agent_type=agent_type,
-                                    trans='V2O')
-
-    plot_mismatch_vs_perfectswitch(mismatch_by_perfectswitch_o2v, mismatch_by_perfectswitch_v2o)
-
-    if agent_type == 'basic':
-        print( "(epsilon, alpha, unrewarded_visual_exploration_rate), learning_during_testing)", params_all )
-    else:
-        print( """(belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate,
-                                exploration_add_factor_for_context_uncertainty, alpha),
-                         learning_during_testing, context_sampling )""", params_all )
-    print( 'Mean squared error = ', 
-                meansquarederror(mean_probability_action_given_stimulus_o2v,
-                                mean_probability_action_given_stimulus_v2o,
-                                probability_action_given_stimulus_o2v,
-                                probability_action_given_stimulus_v2o,
-                                fit_rewarded_stimuli_only) )
-
-    plt.show()
+    load_plot_simdata(savefilename)

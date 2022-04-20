@@ -135,15 +135,22 @@ def meansquarederror(exp_probability_action_given_stimulus_o2v,
     #  but not when handling nan-s separately from non-nan-s
     #  but not bothering about this,
     #   this counts as a changing weighting factor for nan-s vs non nan-s
-    mse = np.mean(np.power(error_o2v,2)) + np.mean(np.power(error_v2o,2)) \
+    old_mse = np.mean(np.power(error_o2v,2)) + np.mean(np.power(error_v2o,2)) \
             + np.mean(np.power(nan_error_o2v,2)) + np.mean(np.power(nan_error_v2o,2))
-    mse /= 4.0
-    print("mean squared error = ",mse)
+    old_mse /= 4.0
+    mse = np.sum(np.power(error_o2v,2)) + np.sum(np.power(error_v2o,2)) \
+            + np.sum(np.power(nan_error_o2v,2)) + np.sum(np.power(nan_error_v2o,2))
+    # normalize to per step (divide by total number of steps)
+    #  though nan-s in sim not seen in exp are included separately in nan_error_... above,
+    #   the corresponding entries are set to zero in error_..., 
+    #  so total number of steps to normalize by remains the same
+    mse /= error_o2v.shape[0] + error_v2o.shape[0]
+    print("mean squared error = ",mse,', old mse = ',old_mse)
     
     return mse
 
 
-def run_and_mse(parameters,
+def simulate_and_mse(parameters,
                     agent_type, agent, steps,
                     mean_probability_action_given_stimulus_o2v,
                     mean_probability_action_given_stimulus_v2o,
