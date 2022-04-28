@@ -16,9 +16,12 @@ def process_transitions(exp_step, block_vector_exp_compare,
     # note that block number changes on the first time step of a new trial,
     # debug print
     #print(('O2V' if O2V else 'V2O')+" transition at steps ",transitions)
+    print('Number of '+('O2V' if O2V else 'V2O')+' transitions =', len(transitions))
     
     average_reward_around_transition = np.zeros(half_window*2+1)
     actionscount_to_stimulus = np.zeros((6,half_window*2+1,2)) # 6 stimuli, 2 actions
+    # above is by time steps, below is by trials
+    actionscount_to_stimulus_bytrials = np.zeros((6,half_window*2+1,2)) # 6 stimuli, 2 actions
     context = np.zeros((half_window*2+1,len(context_record[0])))
     mismatch_error = np.zeros((half_window*2+1,len(context_record[0])))
     mismatch_by_perfectswitch = [[],[]]
@@ -39,7 +42,7 @@ def process_transitions(exp_step, block_vector_exp_compare,
         #        stimulus_vector_exp_compare[transition-5:transition+5],
         #        action_vector_exp_compare[transition-5:transition+5])
 
-        ######### actions given stimuli around transition
+        ######### actions given stimuli around transition by time steps
         for stimulus_number in range(1,7):
             # bitwise and takes precedence over equality testing, so need brackets
             # stimuli are saved in experiment as 1 to 6
@@ -73,6 +76,30 @@ def process_transitions(exp_step, block_vector_exp_compare,
         mismatch_error[window_start:window_end,:] += mismatch_error_record[window_min:window_max,:]
 
         num_transitions_averaged += 1
+
+        ######### actions given stimuli around transition by trials
+        # for stimuli 1,2 (visual block) counting by steps and by trials is the same
+        actionscount_to_stimulus_bytrials[ [0,1], :, :] = actionscount_to_stimulus[ [0,1], :, :]
+        # for stimuli 3-6 (olfactory block) need to collapse steps into trials
+        trialnum = 0
+        # go from transition towards olfactory steps / trials, need to align transitions
+        if O2V: stepnums = range(transition,window_min,-1)
+        else: stepnums = range(transition,window_max)
+        for stepnum in stepnums:
+            stimulus = stimulus_vector_exp_compare[stepnum]
+            if stimulus in [5,6]: # olfactory stimulus
+                if O2V: windownum = half_window-trialnum
+                else: windownum = half_window+trialnum
+                actionscount_to_stimulus_bytrials[ int(stimulus-1), windownum, \
+                                                    int(action_vector_exp_compare[stepnum]) ] += 1
+                # was there a visual stimulus of the olfactory block before this?
+                if stepnum>window_min: # can't go out of bounds
+                    prev_stimulus = stimulus_vector_exp_compare[stepnum-1]
+                    if prev_stimulus in [3,4]:
+                        actionscount_to_stimulus_bytrials[ int(prev_stimulus-1), windownum, \
+                                                            int(action_vector_exp_compare[stepnum-1]) ] += 1
+                trialnum += 1
+
     average_reward_around_transition /= num_transitions_averaged
 
     # normalize over the actions (last axis i.e. -1) to get probabilities
@@ -81,13 +108,17 @@ def process_transitions(exp_step, block_vector_exp_compare,
     probability_action_given_stimulus = actionscount_to_stimulus \
                 / np.sum(actionscount_to_stimulus,axis=-1)[:,:,np.newaxis] #\
                         #+ np.finfo(np.double).eps )
+    probability_action_given_stimulus_bytrials = actionscount_to_stimulus_bytrials \
+                / np.sum(actionscount_to_stimulus_bytrials,axis=-1)[:,:,np.newaxis] #\
 
     context /= num_transitions_averaged
     mismatch_error /= num_transitions_averaged
 
     return average_reward_around_transition, \
                 actionscount_to_stimulus, \
+                actionscount_to_stimulus_bytrials, \
                 probability_action_given_stimulus, \
+                probability_action_given_stimulus_bytrials, \
                 context, mismatch_error, mismatch_by_perfectswitch
 
 

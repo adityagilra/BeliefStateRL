@@ -19,6 +19,7 @@ from utils import meansquarederror,  process_transitions
 half_window = 30
 
 def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
+                                        probability_action_given_stimulus_bytrials,
                                         exp_mean_probability_action_given_stimulus,
                                         context, mismatch_error,
                                         detailed_plots, abstract_plots, paper_plots,
@@ -95,12 +96,12 @@ def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
             axabstract.set_xlim([-half_window,half_window])
 
         if paper_plots:
-            plot_without_nans(axpaper, xvec,probability_action_given_stimulus\
+            plot_without_nans(axpaper, xvec,probability_action_given_stimulus_bytrials\
                                         [stimulus_index,:,1], marker='.',
                                         color=colors[stimulus_index],
                                         linestyle='solid',
                                         label=labels[stimulus_index])
-            axpaper.set_xlabel(units+' around '+trans+' transition')
+            axpaper.set_xlabel('trials around '+trans+' transition')
             axpaper.set_ylabel('P(lick|stimulus)')
             axpaper.set_xlim([-half_window,half_window])
 
@@ -187,7 +188,9 @@ def load_plot_simdata(filename):
     # no need to pass above variables as they are not modified, only analysed
     average_reward_around_o2v_transition, \
         actionscount_to_stimulus_o2v, \
+        actionscount_to_stimulus_bytrials_o2v, \
         probability_action_given_stimulus_o2v, \
+        probability_action_given_stimulus_bytrials_o2v, \
         context_o2v, mismatch_error_o2v, mismatch_by_perfectswitch_o2v = \
             process_transitions(exp_step, block_vector_exp_compare,
                                 reward_vector_exp_compare,
@@ -236,6 +239,7 @@ def load_plot_simdata(filename):
     print("finished reading experimental data.")
 
     plot_prob_actions_given_stimuli(probability_action_given_stimulus_o2v,
+                                    probability_action_given_stimulus_bytrials_o2v,
                                     mean_probability_action_given_stimulus_o2v,
                                     context_o2v, mismatch_error_o2v,
                                     detailed_plots, abstract_plots, paper_plots,
@@ -245,7 +249,9 @@ def load_plot_simdata(filename):
     # no need to pass above variables as they are not modified, only analysed
     average_reward_around_v2o_transition, \
         actionscount_to_stimulus_v2o, \
+        actionscount_to_stimulus_bytrials_v2o, \
         probability_action_given_stimulus_v2o, \
+        probability_action_given_stimulus_bytrials_v2o, \
         context_v2o, mismatch_error_v2o, mismatch_by_perfectswitch_v2o = \
             process_transitions(exp_step, block_vector_exp_compare,
                                 reward_vector_exp_compare, 
@@ -255,6 +261,7 @@ def load_plot_simdata(filename):
                                 O2V = False, half_window=half_window)
 
     plot_prob_actions_given_stimuli(probability_action_given_stimulus_v2o,
+                                    probability_action_given_stimulus_bytrials_v2o,
                                     mean_probability_action_given_stimulus_v2o,
                                     context_v2o, mismatch_error_v2o,
                                     detailed_plots, abstract_plots, paper_plots,
