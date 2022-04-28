@@ -34,7 +34,7 @@ Aditya Gilra, 31 Aug 2021.
 
 from gym import Env
 from gym.spaces import Discrete
-from gym.utils import colorize, seeding
+#from gym.utils import colorize, seeding
 import numpy as np
 import sys
 
@@ -46,7 +46,7 @@ class VisualOlfactoryAttentionSwitchEnv(Env):
     observations = ['blank'] + visual_stimuli + olfactory_stimuli + ['end']
 
     def __init__(self, reward_size=10, punish_factor=0.5,
-                        lick_without_reward_factor=0.2):
+                        lick_without_reward_factor=0.2, seed=1):
         super(VisualOlfactoryAttentionSwitchEnv, self).__init__()
 
         # reward for correct response
@@ -74,17 +74,17 @@ class VisualOlfactoryAttentionSwitchEnv(Env):
         self.trial_number = None
         self.done_trial = None
 
-        self.np_random = None
+        self.rng = None
 
         # set / reset some attributes of this class
-        self.seed()
+        self.set_seed(seed)
         self.reset()
         
         self.outfile = sys.stdout
 
-    def seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
+    def set_seed(self, seed):
+        self.rng = np.random.default_rng(seed)
+        #self.np_random, seed = seeding.np_random(seed)
 
     def reset(self):
         self.block_number = 0
@@ -248,7 +248,7 @@ class VisualOlfactoryAttentionSwitchEnv(Env):
                     self.observation_number = 1
                 else:
                     self.observation_number = \
-                            1 + int(self.np_random.uniform()*2)
+                            1 + int(self.rng.uniform()*2)
 
                 # lick on next time step if first visual stimuli
                 if self.observation_number == 1:
@@ -273,14 +273,14 @@ class VisualOlfactoryAttentionSwitchEnv(Env):
                     # to-ignore rewarded visual stimulus is shown until 3 correct in a row
                     self.observation_number = 1
                 else:
-                    if self.np_random.uniform() < 0.7:
+                    if self.rng.uniform() < 0.7:
                         # one of visual stimuli is shown now, unrewarded
                         self.observation_number = \
-                                1 + int(self.np_random.uniform()*2)
+                                1 + int(self.rng.uniform()*2)
                     else:
                         # one of olfactory stimuli is shown now
                         self.observation_number = \
-                                3 + int(self.np_random.uniform()*2)
+                                3 + int(self.rng.uniform()*2)
                         # lick on next time step if first olfactory stimuli
                         if self.observation_number == 3:
                             self.target_action_number = 1
@@ -294,7 +294,7 @@ class VisualOlfactoryAttentionSwitchEnv(Env):
                         
                     # one of olfactory stimuli is shown now
                     self.observation_number = \
-                            3 + int(self.np_random.uniform()*2)
+                            3 + int(self.rng.uniform()*2)
 
                     # lick on next time step if first olfactory stimuli
                     if self.observation_number == 3:

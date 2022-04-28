@@ -1,4 +1,5 @@
 import numpy as np
+import sys
 
 class BeliefHistoryTabularRL():
     # state is a concatenated string of previous history observations
@@ -17,6 +18,7 @@ class BeliefHistoryTabularRL():
                 exploration_add_factor_for_context_uncertainty=8):
         self.env = env
         self.seed = seed
+        self.rng = np.random.default_rng(seed=seed)
 
         # policy can be one of these
         #policy = 0 # random
@@ -99,7 +101,8 @@ class BeliefHistoryTabularRL():
         self.t = 0
         # for history, assume earlier observation was 'end'
         self.previous_observation = self.end_observation
-        self.env.seed(self.seed)
+        self.rng = np.random.default_rng(self.seed)
+        self.env.set_seed(self.seed)
         self.observation = self.env.reset()
         #self.env.render() # prints on sys.stdout
 
@@ -126,7 +129,9 @@ class BeliefHistoryTabularRL():
         ############# choose an action
         if self.policy == 0:
             # random policy
-            action = self.env.action_space.sample()
+            # do not use environment's action_space.sample() as it'll use OpenAI Gym's RNG whose seed is not set
+            #action = self.env.action_space.sample()
+            action = self.rng.choice(range(self.actions_length))
         elif self.policy == 1:
             if self.beliefRL and not self.weight_contexts_by_probabilities:
                 # agent chooses a context for action, based on current context belief / probabilities                
@@ -135,7 +140,7 @@ class BeliefHistoryTabularRL():
                     #  could be a proxy for a neural decision making process
                     #  this sampling noise typically overshadows the noise added to context prediction error
                     context_assumed_now = \
-                        np.random.choice( range(self.n_contexts),\
+                        self.rng.choice( range(self.n_contexts),\
                                             p=self.context_belief_probabilities )
                 else:
                     # select the context with higher belief
@@ -176,8 +181,10 @@ class BeliefHistoryTabularRL():
                 if self.weight_contexts_by_probabilities:
                     # agent weights Q values of contexts by current context probabilities
                     pass # to implement
-                    if np.random.uniform() < exploration_rate:
-                        action = self.env.action_space.sample()
+                    if self.rng.uniform() < exploration_rate:
+                        # do not use environment's action_space.sample() as it'll use OpenAI Gym's RNG whose seed is not set
+                        #action = self.env.action_space.sample()
+                        action = self.rng.choice(range(self.actions_length))
                     else:
                         # to implement
                         pass
@@ -189,21 +196,25 @@ class BeliefHistoryTabularRL():
                         #  could be a proxy for a neural decision making process
                         #  this sampling noise typically overshadows the noise added to context prediction error
                         context_assumed_now = \
-                            np.random.choice( range(self.n_contexts),\
+                            self.rng.choice( range(self.n_contexts),\
                                                 p=self.context_belief_probabilities )
                     else:
                         # select the context with higher belief
                         context_assumed_now = np.argmax(self.context_belief_probabilities)
                     
-                    if np.random.uniform() < exploration_rate:
-                        action = self.env.action_space.sample()
+                    if self.rng.uniform() < exploration_rate:
+                        # do not use environment's action_space.sample() as it'll use OpenAI Gym's RNG whose seed is not set
+                        #action = self.env.action_space.sample()
+                        action = self.rng.choice(range(self.actions_length))
                     else:
                         action = np.argmax(self.Q_array[self.previous_state][context_assumed_now,:])
             else:
                 ###### Not context-belief-based, just one context assumed
                 context_assumed_now = 0
-                if np.random.uniform() < exploration_rate:
-                    action = self.env.action_space.sample()
+                if self.rng.uniform() < exploration_rate:
+                    # do not use environment's action_space.sample() as it'll use OpenAI Gym's RNG whose seed is not set
+                    #action = self.env.action_space.sample()
+                    action = self.rng.choice(range(self.actions_length))
                 else:
                     action = np.argmax(self.Q_array[self.previous_state][0,:])
                     
@@ -295,9 +306,9 @@ class BeliefHistoryTabularRL():
 
                 # context prediction error (mismatch error) is noisy in experiments
                 # additive noise
-                #self.context_prediction_error += self.context_error_noiseSD*np.random.normal()
+                #self.context_prediction_error += self.context_error_noiseSD*self.rng.normal()
                 # multiplicative noise
-                self.context_prediction_error *= (1.+self.context_error_noiseSD_factor*np.random.normal())
+                self.context_prediction_error *= (1.+self.context_error_noiseSD_factor*self.rng.normal())
 
                 # ACC encoding of prediction error can be reduced by a factor
                 #  that serves as a proxy for ACC silencing

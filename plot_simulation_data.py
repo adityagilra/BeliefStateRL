@@ -10,6 +10,7 @@ import gym_tasks
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import scipy.io as scipyio
+import sys
 
 from exp_data_analysis import get_exp_reward_around_transition
 from utils import meansquarederror,  process_transitions
@@ -20,7 +21,7 @@ half_window = 30
 def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
                                         exp_mean_probability_action_given_stimulus,
                                         context, mismatch_error,
-                                        detailed_plots, abstract_plots,
+                                        detailed_plots, abstract_plots, paper_plots,
                                         agent_type='',
                                         units='steps', trans='O2V'):    
     # debug print
@@ -51,6 +52,10 @@ def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
     if abstract_plots:
         figabstract, axabstract = plt.subplots(1,1)
         axabstract.plot([0,0],[0,1],',k',linestyle='--')
+
+    if paper_plots:
+        figpaper, axpaper = plt.subplots(1,1)
+        axpaper.plot([0,0],[0,1],',k',linestyle='--')
 
     for stimulus_index in range(6):
         if detailed_plots:
@@ -89,6 +94,16 @@ def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
             axabstract.set_ylabel('P(lick|stimulus)')
             axabstract.set_xlim([-half_window,half_window])
 
+        if paper_plots:
+            plot_without_nans(axpaper, xvec,probability_action_given_stimulus\
+                                        [stimulus_index,:,1], marker='.',
+                                        color=colors[stimulus_index],
+                                        linestyle='solid',
+                                        label=labels[stimulus_index])
+            axpaper.set_xlabel(units+' around '+trans+' transition')
+            axpaper.set_ylabel('P(lick|stimulus)')
+            axpaper.set_xlim([-half_window,half_window])
+
     if agent_type=='belief':
         # context beliefs and mismatch (context prediction error) signals
         axall[1].plot(xvec,context[:,0],',-c',label='vis')
@@ -111,18 +126,27 @@ def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
             axabstract.plot(xvec,context[:,0],',-c',label='vis')
             axabstract.plot(xvec,context[:,1],',-m',label='olf')
         figabstract.tight_layout()
-        figabstract.savefig('RL_'+agent_type+'_'+trans+'.pdf')
-        figabstract.savefig('RL_'+agent_type+'_'+trans+'.svg')
+        figabstract.savefig('RL_'+agent_type+'_'+trans+'_cosyne.pdf')
+        figabstract.savefig('RL_'+agent_type+'_'+trans+'_cosyne.svg')
+
+    if paper_plots:
+        figpaper.tight_layout()
+        figpaper.savefig('RL_'+agent_type+'_'+trans+'.pdf')
+        figpaper.savefig('RL_'+agent_type+'_'+trans+'.svg')
 
 def plot_mismatch_vs_perfectswitch(mismatch_by_perfectswitch_o2v, mismatch_by_perfectswitch_v2o):
     fig, ax = plt.subplots(1,2)
-    ax[0].bar( ['wrong switch','correct switch'],
-                [np.mean(mismatch_by_perfectswitch_o2v[0]),np.mean(mismatch_by_perfectswitch_o2v[1])],
-                yerr=[np.std(mismatch_by_perfectswitch_o2v[0]),np.std(mismatch_by_perfectswitch_o2v[1])] )
+    #ax[0].bar( ['wrong switch','correct switch'],
+    #            [np.mean(mismatch_by_perfectswitch_o2v[0]),np.mean(mismatch_by_perfectswitch_o2v[1])],
+    #            yerr=[np.std(mismatch_by_perfectswitch_o2v[0]),np.std(mismatch_by_perfectswitch_o2v[1])] )
+    ax[0].boxplot( mismatch_by_perfectswitch_o2v )
+    ax[0].set_xticklabels(['imperfect switch','perfect switch'])
     ax[0].set_ylabel('mismatch error O2V')
-    ax[1].bar( ['wrong switch','correct switch'],
-                [np.mean(mismatch_by_perfectswitch_v2o[0]),np.mean(mismatch_by_perfectswitch_v2o[1])],
-                yerr=[np.std(mismatch_by_perfectswitch_v2o[0]),np.std(mismatch_by_perfectswitch_v2o[1])] )
+    #ax[1].bar( ['wrong switch','correct switch'],
+    #            [np.mean(mismatch_by_perfectswitch_v2o[0]),np.mean(mismatch_by_perfectswitch_v2o[1])],
+    #            yerr=[np.std(mismatch_by_perfectswitch_v2o[0]),np.std(mismatch_by_perfectswitch_v2o[1])] )
+    ax[1].boxplot( mismatch_by_perfectswitch_v2o )
+    ax[1].set_xticklabels(['imperfect switch','perfect switch'])
     ax[1].set_ylabel('mismatch error V2O')
     fig.tight_layout()
 
@@ -145,7 +169,8 @@ def load_plot_simdata(filename):
     mismatch_error_record = simdata['mismatch_error_record']
     
     detailed_plots = False
-    abstract_plots = True#False
+    abstract_plots = False
+    paper_plots = True
 
     ## obsolete - start
     #fig1 = plt.figure()
@@ -213,7 +238,7 @@ def load_plot_simdata(filename):
     plot_prob_actions_given_stimuli(probability_action_given_stimulus_o2v,
                                     mean_probability_action_given_stimulus_o2v,
                                     context_o2v, mismatch_error_o2v,
-                                    detailed_plots, abstract_plots,
+                                    detailed_plots, abstract_plots, paper_plots,
                                     agent_type=agent_type)
 
     # obtain the mean reward and action given stimulus around V2O transition
@@ -232,7 +257,7 @@ def load_plot_simdata(filename):
     plot_prob_actions_given_stimuli(probability_action_given_stimulus_v2o,
                                     mean_probability_action_given_stimulus_v2o,
                                     context_v2o, mismatch_error_v2o,
-                                    detailed_plots, abstract_plots,
+                                    detailed_plots, abstract_plots, paper_plots,
                                     agent_type=agent_type,
                                     trans='V2O')
 
@@ -253,5 +278,10 @@ def load_plot_simdata(filename):
 
     plt.show()
     
+def plot_without_nans(ax,x,y,*args,**kwargs):
+    nonans_idxs = ~np.isnan(y)
+    ax.plot( np.array(x)[nonans_idxs], np.array(y)[nonans_idxs], *args, **kwargs )
+    
 if __name__ == "__main__":
     load_plot_simdata('simulation_data/simdata_belief_numparams4_ACCcontrol_seed1.mat')
+

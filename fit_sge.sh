@@ -13,4 +13,4 @@ source activate pytorch_py3.6
 # use -u for unbuffered stdout, i.e. flush after every print
 #  else output gets written only after a flush
 #  and no flush when a `qdel <qpid>` kill process is sent
-python -u fit.py > fit_out4.txt
+python -u fit.py > fit_out9.txt

@@ -157,8 +157,7 @@ def simulate_and_mse(parameters,
                     fit_rewarded_stimuli_only, num_params_to_fit, half_window, seed):
 
     print("Training agent with parameters = ",parameters)
-    agent.reset()
-    np.random.seed(seed)
+    agent.reset() # also resets seeds of agent and env
 
     if agent_type == 'belief':
         belief_switching_rate = parameters[0]

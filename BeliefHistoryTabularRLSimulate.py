@@ -10,16 +10,16 @@ import gym_tasks
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import scipy.io as scipyio
+import sys
 
 from BeliefHistoryTabularRL import BeliefHistoryTabularRL
 from utils import meansquarederror,  process_transitions
 from plot_simulation_data import load_plot_simdata
 
-# reproducible random number generation
+# reproducible random number generation -- env and agent use independent RNGs with same seed currently
 seed = 1
-np.random.seed(seed)
 
-def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None, num_params_to_fit = 3):
+def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_fit = 3):
     # use one of these environments,
     #  with or without blank state at start of each trial
     # OBSOLETE - with blanks environment won't work,
@@ -28,7 +28,7 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None, num_params_
     # HARDCODED these observations to stimuli encoding
     env = gym.make('visual_olfactory_attention_switch_no_blank-v0',
                     reward_size=1., punish_factor=1.,
-                    lick_without_reward_factor=1.)
+                    lick_without_reward_factor=1., seed=seed)
 
     ############# agent instatiation and agent parameters ###########
     # you need around 1,000,000 steps for enough transitions to average over
@@ -65,9 +65,11 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None, num_params_
             #epsilon, alpha = 0.20625835, 0.9112167 # fit p(lick|stimuli) for all stimuli # exploration on during testing # fitted successfully with mse = 0.004342
             #unrewarded_visual_exploration_rate = 0.4
         else:
-            ### 3-param fit using brute to minimize mse,
-            epsilon, alpha, unrewarded_visual_exploration_rate = 0.25618055, 0.78719931, 0.30161107
-            # mse = 0.008409035747337732, did not fit -- max func evals exceeded, fit all 4 curves.
+            ### 3-param fit
+            #epsilon, alpha, unrewarded_visual_exploration_rate \
+                    #= 0.22270257, 0.87529689, 0.3458835 # mse = 0.018739743421187977, old mse = 0.009238249518122875, COBYLA local fit tol=0.0005 successfully
+            epsilon, alpha, unrewarded_visual_exploration_rate \
+                    = 0.25618055, 0.78719931, 0.30161107 # mse = 0.008409035747337732, brute and then local fit fmin: did not fit -- max func evals exceeded, fit all 4 curves.
 
         learning_during_testing = True
         params_all = ((epsilon, alpha, unrewarded_visual_exploration_rate), learning_during_testing)
@@ -147,14 +149,14 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=None, num_params_
             elif num_params_to_fit == 4:
                 ##### obtained by 4-param fit
                 belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
-                            = 0.7, 3., 0.05, 0.4
-                            #= 0.3013795 , 1.6326803 , 0.37694708, 0.62256759 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # mse = 0.0017315496769514552, reward structure 1, 1, 1, max func evals exceeded -- did not fit
-                exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
-
-                ###### obtained by 4-param fit
+                            = 0.69474268, 2.10976159, 0.09317885, 0.46556799 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # mse = 0.003098491835327584, old mse = 0.0015597898820416504, reward structure 1, 1, 1, COBYLA local fit tol=0.0005 successfully, starting from values: 0.7, 2., 0.1, 0.4
                 #belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
-                #            = 0.46048665, 4.90591006, 0.51447091, 0.44796221 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # mse = 0.0021553571995931737, reward structure 1, 1, 1, max func evals exceeded -- did not fit
-                #exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
+                #            = 0.90470671, 1.63768158, 0.26397918, 0.44469277 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # mse = 0.003232071343265149 , old mse =  0.0016175240716927593, reward structure 1, 1, 1, COBYLA local fit tol=0.0005 successfully, starting from values: 0.9, 1.625, 0.255, 0.4525 -- not so good mse = 0.009899, sensitive to seed perhaps
+                #belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
+                #            = 0.78155776, 0.50658442, 0.50604311, 0.45813087 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # mse = 0.0032915614142155743, old mse =  0.0016503114709468334, reward structure 1, 1, 1, COBYLA local fit tol=0.0005 successfully, starting from values: 0.73125, 0.50625, 0.50625, 0.45815625 -- awful mse = 0.036 when running here, possibly very sensitive to seed
+                #belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
+                            #= 0.73125, 0.50625, 0.50625, 0.45815625 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # mse = 0.0176209908141966, reward structure 1, 1, 1, max func evals exceeded -- did not fit
+                exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
 
         else: ## if context_sampling == False
             if num_params_to_fit == 2:
@@ -254,7 +256,8 @@ if __name__ == "__main__":
     env, agent, steps, params_all = get_env_agent(agent_type, ACC_off_factor, seed=seed,
                                                  num_params_to_fit=num_params_to_fit)
     
-    np.random.seed(seed)
+    agent.reset()
+    
     # train the RL agent on the task
     exp_step, block_vector_exp_compare, \
         reward_vector_exp_compare, stimulus_vector_exp_compare, \

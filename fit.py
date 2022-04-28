@@ -95,8 +95,8 @@ if __name__ == "__main__":
         steps = 500000
 
     if agent_type == 'belief':
-        belief_switching_rate_start = 0.7
-        exploration_rate_start = 0.1
+        belief_switching_rate_start = 0.73125#0.7
+        exploration_rate_start = 0.50625#0.1
         learning_rate_start = 0.1
         #parameters = (belief_switching_rate_start,
         #                exploration_rate_start, learning_rate_start)
@@ -104,8 +104,8 @@ if __name__ == "__main__":
         #bounds_obj = Bounds((0.5,0.,0.),(0.9,1.,1.))
         #belief_exploration_add_factor_start = 8
         #weak_visual_factor_start = 0.3
-        unrewarded_visual_exploration_rate_start = 0.4
-        context_error_noiseSD_factor_start = 2
+        unrewarded_visual_exploration_rate_start = 0.45815625#0.4
+        context_error_noiseSD_factor_start = 0.50625#2
         if num_params_to_fit == 2:
             parameters = (belief_switching_rate_start,
                         context_error_noiseSD_factor_start)
@@ -198,7 +198,7 @@ if __name__ == "__main__":
                                 mean_probability_action_given_stimulus_o2v,
                                 mean_probability_action_given_stimulus_v2o,
                                 fit_rewarded_stimuli_only, num_params_to_fit, half_window, seed),
-                        method='COBYLA', options={'tol':0.005, 'rhobeg':0.05, 'disp':True}
+                        method='COBYLA', options={'tol':0.0005, 'rhobeg':0.05, 'disp':True}
                         )
 
     print(result)
