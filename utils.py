@@ -124,11 +124,11 @@ def process_transitions(exp_step, block_vector_exp_compare,
                 context, mismatch_error, mismatch_by_perfectswitch
 
 
-def meansquarederror(exp_probability_action_given_stimulus_o2v,
+def rootmeansquarederror(exp_probability_action_given_stimulus_o2v,
                     exp_probability_action_given_stimulus_v2o,
                     agent_probability_action_given_stimulus_o2v,
                     agent_probability_action_given_stimulus_v2o,
-                    fit_rewarded_stimuli_only):
+                    fit_rewarded_stimuli_only, num_params):
     if fit_rewarded_stimuli_only:
         # stimuli are in the order: ['+v','-v','/+v','/-v','+o','-o']
         # we select indices 0,2,4
@@ -144,6 +144,8 @@ def meansquarederror(exp_probability_action_given_stimulus_o2v,
     ### Only compare steps around transition to model where experiment doesn't have a nan
     nonans_o2v = ~np.isnan(exp_probability_action_given_stimulus_o2v)
     nonans_v2o = ~np.isnan(exp_probability_action_given_stimulus_v2o)
+    num_nonans_o2v = np.sum(nonans_o2v.astype(int))
+    num_nonans_v2o = np.sum(nonans_v2o.astype(int))
     # error is simulated agent transitions - experimental transitions
     error_o2v = agent_probability_action_given_stimulus_o2v[nonans_o2v] \
                     - exp_probability_action_given_stimulus_o2v[nonans_o2v]
@@ -173,14 +175,14 @@ def meansquarederror(exp_probability_action_given_stimulus_o2v,
     old_mse /= 4.0
     mse = np.sum(np.power(error_o2v,2)) + np.sum(np.power(error_v2o,2)) \
             + np.sum(np.power(nan_error_o2v,2)) + np.sum(np.power(nan_error_v2o,2))
-    # normalize to per step (divide by total number of steps)
-    #  though nan-s in sim not seen in exp are included separately in nan_error_... above,
-    #   the corresponding entries are set to zero in error_..., 
-    #  so total number of steps to normalize by remains the same
-    mse /= error_o2v.shape[0] + error_v2o.shape[0]
-    print("mean squared error = ",mse,', old mse = ',old_mse)
+    # normalize to number of data points fitted in the model
+    #  also subtracting the number of parameters used in the model to normalize by degrees of freedom
+    #   -- this is accurate for linear models, no simple fix for non-linear models
+    mse /= (num_nonans_o2v + num_nonans_v2o - num_params)
+    rmse = np.sqrt(mse) # important to do sqrt after dividing above
+    print("root mean squared error = ",rmse,', old mse = ',old_mse)
     
-    return mse
+    return rmse
 
 
 def simulate_and_mse(parameters,
@@ -229,7 +231,9 @@ def simulate_and_mse(parameters,
     # no need to pass above variables as they are not modified, only analysed
     average_reward_around_o2v_transition, \
         actionscount_to_stimulus_o2v, \
+        actionscount_to_stimulus_bytrials_o2v, \
         probability_action_given_stimulus_o2v, \
+        probability_action_given_stimulus_bytrials_o2v, \
         context_o2v, mismatch_error_o2v, mismatch_by_perfectswitch_o2v = \
             process_transitions(exp_step, block_vector_exp_compare,
                                 reward_vector_exp_compare,
@@ -242,7 +246,9 @@ def simulate_and_mse(parameters,
     # no need to pass above variables as they are not modified, only analysed
     average_reward_around_v2o_transition, \
         actionscount_to_stimulus_v2o, \
+        actionscount_to_stimulus_bytrials_v2o, \
         probability_action_given_stimulus_v2o, \
+        probability_action_given_stimulus_bytrials_v2o, \
         context_v2o, mismatch_error_v2o, mismatch_by_perfectswitch_v2o = \
             process_transitions(exp_step, block_vector_exp_compare,
                                 reward_vector_exp_compare,
@@ -251,11 +257,11 @@ def simulate_and_mse(parameters,
                                 context_record, mismatch_error_record,
                                 O2V = False, half_window=half_window)
 
-    mse = meansquarederror(mean_probability_action_given_stimulus_o2v,
+    rmse = rootmeansquarederror(mean_probability_action_given_stimulus_o2v,
                             mean_probability_action_given_stimulus_v2o,
                             probability_action_given_stimulus_o2v,
                             probability_action_given_stimulus_v2o,
-                            fit_rewarded_stimuli_only)
+                            fit_rewarded_stimuli_only, num_params_to_fit)
 
-    return mse
+    return rmse
 

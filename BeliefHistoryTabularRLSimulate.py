@@ -13,7 +13,6 @@ import scipy.io as scipyio
 import sys
 
 from BeliefHistoryTabularRL import BeliefHistoryTabularRL
-from utils import meansquarederror,  process_transitions
 from plot_simulation_data import load_plot_simdata
 
 # reproducible random number generation -- env and agent use independent RNGs with same seed currently
@@ -63,7 +62,8 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_
             #  with bug-fixed nan-s to nan-s fitting,
             epsilon, alpha = 0.21976563, 0.96556641 # fit p(lick|stimuli) for only reward-structure-known stimuli # exploration on during testing # fitted successfully with mse = 0.005474
             #epsilon, alpha = 0.20625835, 0.9112167 # fit p(lick|stimuli) for all stimuli # exploration on during testing # fitted successfully with mse = 0.004342
-            #unrewarded_visual_exploration_rate = 0.4
+            # setting this to None will make it not be used
+            unrewarded_visual_exploration_rate = None
         else:
             ### 3-param fit
             #epsilon, alpha, unrewarded_visual_exploration_rate \

@@ -10,13 +10,13 @@ from plot_simulation_data import half_window
 
 if __name__ == "__main__":
 
-    agent_type = 'belief'
-    #agent_type = 'basic'
+    #agent_type = 'belief'
+    agent_type = 'basic'
     
     if agent_type == 'basic':
         # choose one of the below
-        #num_params_to_fit = 2 # for both basic and belief RL
-        num_params_to_fit = 3 # for both basic and belief RL
+        num_params_to_fit = 2 # for both basic and belief RL
+        #num_params_to_fit = 3 # for both basic and belief RL
     else:
         # choose one of the below
         #num_params_to_fit = 2 # for both basic and belief RL
@@ -85,7 +85,7 @@ if __name__ == "__main__":
     env, agent, steps, params_all = get_env_agent(agent_type=agent_type, 
                                         ACC_off_factor=ACC_off_factor,
                                         seed=seed,
-                                        num_params_to_fit = num_params_to_fit)
+                                        num_params_to_fit=num_params_to_fit)
     
     # steps return by agent here are much longer
     #  and fitting would take quite long, so using lower number of steps
@@ -127,15 +127,15 @@ if __name__ == "__main__":
 
     elif agent_type == 'basic':
         if num_params_to_fit == 2:
-            exploration_rate_start = 0.1
-            learning_rate_start = 0.1
+            exploration_rate_start = 0.2
+            learning_rate_start = 0.8
             parameters = (exploration_rate_start, learning_rate_start)
             ranges = ((0.1,0.5),(0.1,0.9))
             #bounds_obj = Bounds((0.,0.),(1.,1.))
         elif num_params_to_fit == 3:
-            exploration_rate_start = 0.1
-            learning_rate_start = 0.9
-            unrewarded_visual_exploration_rate_start = 0.4
+            exploration_rate_start = 0.2
+            learning_rate_start = 0.8
+            unrewarded_visual_exploration_rate_start = 0.5
             parameters = (exploration_rate_start, 
                             learning_rate_start,
                             unrewarded_visual_exploration_rate_start)

@@ -13,7 +13,7 @@ class BeliefHistoryTabularRL():
                 beliefRL=True, belief_switching_rate=0.7, ACC_off_factor=1.,
                 weak_visual_factor = 1., context_sampling = True,
                 context_error_noiseSD_factor = 0.,
-                unrewarded_visual_exploration_rate = 0.,
+                unrewarded_visual_exploration_rate = None,
                 exploration_is_modulated_by_context_uncertainty=False,
                 exploration_add_factor_for_context_uncertainty=8):
         self.env = env
@@ -26,6 +26,7 @@ class BeliefHistoryTabularRL():
         self.policy = policy
         self.epsilon = epsilon # exploration probability in epsilon-greedy policy
         # to fit the high licking rate to unrewarded visual cue in visual block
+        # can set it to None so that this is not used, and usual epsilon is used throughout
         self.unrewarded_visual_exploration_rate = unrewarded_visual_exploration_rate
 
         self.alpha = alpha # TD learning rate in [0,1]
@@ -146,13 +147,14 @@ class BeliefHistoryTabularRL():
                     # select the context with higher belief
                     context_assumed_now = np.argmax(self.context_belief_probabilities)
 
-            # if unrewarded visual cue in visual block, then boost exploration independently
-            if self.observation == self.visual_observations[1]:
-                if self.beliefRL:
-                    if context_assumed_now == 0:
+            if self.unrewarded_visual_exploration_rate is not None:
+                # if unrewarded visual cue in visual block, then boost exploration independently
+                if self.observation == self.visual_observations[1]:
+                    if self.beliefRL:
+                        if context_assumed_now == 0:
+                            exploration_rate = self.unrewarded_visual_exploration_rate
+                    else:
                         exploration_rate = self.unrewarded_visual_exploration_rate
-                else:
-                    exploration_rate = self.unrewarded_visual_exploration_rate
 
             ############ Q-value based epsilon-greedy policy
             ###### Exploration rate

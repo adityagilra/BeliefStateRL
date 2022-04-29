@@ -14,7 +14,7 @@ import scipy.stats
 import sys
 
 from exp_data_analysis import get_exp_reward_around_transition
-from utils import meansquarederror,  process_transitions
+from utils import rootmeansquarederror,  process_transitions
 
 # number of steps on each side of the transition to consider
 half_window = 30
@@ -285,12 +285,12 @@ def load_plot_simdata(filename):
         print( """(belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate,
                                 exploration_add_factor_for_context_uncertainty, alpha),
                          learning_during_testing, context_sampling )""", params_all )
-    print( 'Mean squared error = ', 
-                meansquarederror(mean_probability_action_given_stimulus_o2v,
+    print( 'Root mean squared error = ', 
+                rootmeansquarederror(mean_probability_action_given_stimulus_o2v,
                                 mean_probability_action_given_stimulus_v2o,
                                 probability_action_given_stimulus_o2v,
                                 probability_action_given_stimulus_v2o,
-                                fit_rewarded_stimuli_only) )
+                                fit_rewarded_stimuli_only, num_params_to_fit) )
 
     plt.show()
     
