@@ -60,23 +60,6 @@ def process_transitions(exp_step, block_vector_exp_compare,
             #        actionscount_to_stimulus[stimulus_number-1,half_window-5:half_window+5,0],
             #        actionscount_to_stimulus[stimulus_number-1,half_window-5:half_window+5,1])
             
-            if O2V:
-                second_trial_idx = transition + 1
-                correct_action = 1
-            else:
-                second_trial_idx = transition + 2
-                correct_action = 0
-            # error in both contexts is taken into account -- np.abs() to neglect direction information
-            if action_vector_exp_compare[second_trial_idx] == correct_action:
-                mismatch_by_perfectswitch[1].append( np.abs(mismatch_error_record[second_trial_idx-1]) )
-            else:
-                mismatch_by_perfectswitch[0].append( np.abs(mismatch_error_record[second_trial_idx-1]) )
-
-        context[window_start:window_end,:] += context_record[window_min:window_max,:]
-        mismatch_error[window_start:window_end,:] += mismatch_error_record[window_min:window_max,:]
-
-        num_transitions_averaged += 1
-
         ######### actions given stimuli around transition by trials
         # for stimuli 1,2 (visual block) counting by steps and by trials is the same
         actionscount_to_stimulus_bytrials[ [0,1], :, :] = actionscount_to_stimulus[ [0,1], :, :]
@@ -99,6 +82,25 @@ def process_transitions(exp_step, block_vector_exp_compare,
                         actionscount_to_stimulus_bytrials[ int(prev_stimulus-1), windownum, \
                                                             int(action_vector_exp_compare[stepnum-1]) ] += 1
                 trialnum += 1
+
+        context[window_start:window_end,:] += context_record[window_min:window_max,:]
+
+        if O2V:
+            second_trial_idx = transition + 1
+            correct_action = 1
+        else:
+            second_trial_idx = transition + 2
+            correct_action = 0
+        # error in both contexts is taken into account -- np.abs() to neglect direction information
+        # note that context prediction error is always a factor times (0,0) or (-1,1) or (1,-1)
+        if action_vector_exp_compare[second_trial_idx] == correct_action:
+            mismatch_by_perfectswitch[1].append( np.sum(np.abs(mismatch_error_record[second_trial_idx-1,:])) )
+        else:
+            mismatch_by_perfectswitch[0].append( np.sum(np.abs(mismatch_error_record[second_trial_idx-1,:])) )
+
+        mismatch_error[window_start:window_end,:] += mismatch_error_record[window_min:window_max,:]
+
+        num_transitions_averaged += 1
 
     average_reward_around_transition /= num_transitions_averaged
 

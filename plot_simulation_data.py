@@ -10,6 +10,7 @@ import gym_tasks
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import scipy.io as scipyio
+import scipy.stats
 import sys
 
 from exp_data_analysis import get_exp_reward_around_transition
@@ -136,6 +137,14 @@ def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
         figpaper.savefig('RL_'+agent_type+'_'+trans+'.svg')
 
 def plot_mismatch_vs_perfectswitch(mismatch_by_perfectswitch_o2v, mismatch_by_perfectswitch_v2o):
+    ranksumstat, pvalue = scipy.stats.ranksums(mismatch_by_perfectswitch_o2v[0],mismatch_by_perfectswitch_o2v[1])
+    print('Wilcoxon rank sum: O2V ranksumstat, pvalue =', ranksumstat, pvalue)
+    ranksumstat, pvalue = scipy.stats.ranksums(mismatch_by_perfectswitch_v2o[0],mismatch_by_perfectswitch_v2o[1])
+    print('Wilcoxon rank sum: V2O ranksumstat, pvalue =', ranksumstat, pvalue)
+    res = scipy.stats.mannwhitneyu(mismatch_by_perfectswitch_o2v[0],mismatch_by_perfectswitch_o2v[1])
+    print('Mann Whitney U: O2V U_x, pvalue =', res.statistic, res.pvalue)
+    res = scipy.stats.mannwhitneyu(mismatch_by_perfectswitch_v2o[0],mismatch_by_perfectswitch_v2o[1])
+    print('Mann Whitney U: V2O U_x, pvalue =', res.statistic, res.pvalue)
     fig, ax = plt.subplots(1,2)
     #ax[0].bar( ['wrong switch','correct switch'],
     #            [np.mean(mismatch_by_perfectswitch_o2v[0]),np.mean(mismatch_by_perfectswitch_o2v[1])],

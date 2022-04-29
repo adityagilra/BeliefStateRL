@@ -301,6 +301,7 @@ class BeliefHistoryTabularRL():
                     elif self.previous_observation in self.visual_observations:
                         # definitely visual trial
                         self.context_prediction_error = np.array((1.,0.)) - context_effective
+                    # since effective context is (0,1) or (1,0), context prediction error is (0,0) or (-1,1) or (1,-1)
                 else:
                     self.context_prediction_error = np.array((0.,0.))
 
