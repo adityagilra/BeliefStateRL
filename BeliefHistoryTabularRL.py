@@ -223,6 +223,10 @@ class BeliefHistoryTabularRL():
         return action, context_assumed_now
 
     def train(self,steps):
+        # diagnostic to check if agent uses the params sent in by fit.py (4 params only for BeliefStateRL
+        #print('Training agent with params: belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate =',
+        #        self.belief_switching_rate, self.context_error_noiseSD_factor, self.epsilon, self.unrewarded_visual_exploration_rate)
+
         # learning and exploration only occur till this time step
         if self.learning_during_testing:
             learning_time_steps = steps

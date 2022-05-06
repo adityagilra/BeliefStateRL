@@ -234,7 +234,8 @@ def load_plot_simdata(filename):
         mice_actionscount_to_stimulus_o2v, \
         mice_actionscount_to_stimulus_trials_o2v, \
         mice_probability_action_given_stimulus_o2v, \
-        mean_probability_action_given_stimulus_o2v = \
+        mean_probability_action_given_stimulus_o2v, \
+        transitions_actionscount_to_stimulus_o2v = \
             get_exp_reward_around_transition(trans='O2V',ACC=ACC_str,
                                             mice_list=mice_list,sessions_list=sessions_list)
     number_of_mice, across_mice_average_reward_v2o, \
@@ -242,7 +243,8 @@ def load_plot_simdata(filename):
         mice_actionscount_to_stimulus_v2o, \
         mice_actionscount_to_stimulus_trials_v2o, \
         mice_probability_action_given_stimulus_v2o, \
-        mean_probability_action_given_stimulus_v2o = \
+        mean_probability_action_given_stimulus_v2o, \
+        transitions_actionscount_to_stimulus_v2o = \
             get_exp_reward_around_transition(trans='V2O',ACC=ACC_str,
                                             mice_list=mice_list,sessions_list=sessions_list)
     print("finished reading experimental data.")
@@ -277,17 +279,17 @@ def load_plot_simdata(filename):
                                     agent_type=agent_type,
                                     trans='V2O')
 
-    plot_mismatch_vs_perfectswitch(mismatch_by_perfectswitch_o2v, mismatch_by_perfectswitch_v2o)
-
     if agent_type == 'basic':
         print( "(epsilon, alpha, unrewarded_visual_exploration_rate), learning_during_testing)", params_all )
-    else:
+    elif agent_type == 'belief':
         print( """(belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate,
                                 exploration_add_factor_for_context_uncertainty, alpha),
                          learning_during_testing, context_sampling )""", params_all )
+        plot_mismatch_vs_perfectswitch(mismatch_by_perfectswitch_o2v, mismatch_by_perfectswitch_v2o)
+
     print( 'Root mean squared error = ', 
-                rootmeansquarederror(mean_probability_action_given_stimulus_o2v,
-                                mean_probability_action_given_stimulus_v2o,
+                rootmeansquarederror(transitions_actionscount_to_stimulus_o2v,
+                                transitions_actionscount_to_stimulus_v2o,
                                 probability_action_given_stimulus_o2v,
                                 probability_action_given_stimulus_v2o,
                                 fit_rewarded_stimuli_only, num_params_to_fit) )

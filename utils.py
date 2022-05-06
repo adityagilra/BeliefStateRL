@@ -124,23 +124,80 @@ def process_transitions(exp_step, block_vector_exp_compare,
                 context, mismatch_error, mismatch_by_perfectswitch
 
 
-def rootmeansquarederror(exp_probability_action_given_stimulus_o2v,
-                    exp_probability_action_given_stimulus_v2o,
+def rootmeansquarederror(transitions_actionscount_to_stimulus_o2v,
+                    transitions_actionscount_to_stimulus_v2o,
                     agent_probability_action_given_stimulus_o2v,
                     agent_probability_action_given_stimulus_v2o,
-                    fit_rewarded_stimuli_only, num_params):
+                    fit_rewarded_stimuli_only, num_params,
+                    fold_num=None, num_folds=None, test=False):
+
+    if num_folds is not None:
+        print('Using fold',fold_num+1,'of',num_folds)
+        # transitions_actionscount_to_stimulus has dimensions:
+        #  stimuli x actions x transitions x window_size
+        ### o2v
+        o2v_transitions_len = transitions_actionscount_to_stimulus_o2v.shape[2]
+        fold_cut = o2v_transitions_len//num_folds
+        if not test: # take k-1 folds for training
+            fold_idxs = np.append( np.arange(0,fold_cut*fold_num,dtype=np.int),\
+                                np.arange(fold_cut*(fold_num+1),o2v_transitions_len,dtype=np.int) )
+        else: # take left out fold for testing
+            fold_idxs = np.arange( fold_cut*fold_num, 
+                                    np.min((fold_cut*(fold_num+1),o2v_transitions_len)),
+                                    dtype=np.int )
+        fold_actionscount_to_stimulus_o2v = transitions_actionscount_to_stimulus_o2v[:,:,fold_idxs,:]
+        # divide by total number of actions taken for each stimulus.
+        #  i.e. normalize lick & nolick counts to give probability
+        # fold_actionscount_to_stimulus has dimensions stimuli x actions x transitions x window_size
+        exp_probability_action_given_stimulus_o2v = \
+            np.sum(fold_actionscount_to_stimulus_o2v,axis=2) \
+                    / np.sum(fold_actionscount_to_stimulus_o2v,axis=(1,2))[:,np.newaxis,:]
+        ### v2o
+        v2o_transitions_len = transitions_actionscount_to_stimulus_v2o.shape[2]
+        fold_cut = v2o_transitions_len//num_folds
+        if not test: # take k-1 folds for training
+            fold_idxs = np.append( np.arange(0,fold_cut*fold_num,dtype=np.int),\
+                                np.arange(fold_cut*(fold_num+1),v2o_transitions_len,dtype=np.int) )
+        else: # take left out fold for testing
+            fold_idxs = np.arange( fold_cut*fold_num, 
+                                    np.min((fold_cut*(fold_num+1),v2o_transitions_len)),
+                                    dtype=np.int )
+        fold_actionscount_to_stimulus_v2o = transitions_actionscount_to_stimulus_v2o[:,:,fold_idxs,:]
+        # divide by total number of actions taken for each stimulus.
+        #  i.e. normalize lick & nolick counts to give probability
+        # fold_actionscount_to_stimulus has dimensions stimuli x actions x transitions x window_size
+        exp_probability_action_given_stimulus_v2o = \
+            np.sum(fold_actionscount_to_stimulus_v2o,axis=2) \
+                    / np.sum(fold_actionscount_to_stimulus_v2o,axis=(1,2))[:,np.newaxis,:]
+
+    else: # use all transitions in exp data for RMSE
+        # divide by total number of actions taken for each stimulus.
+        #  i.e. normalize lick & nolick counts to give probability
+        # transitions_actionscount_to_stimulus has dimensions stimuli x actions x transitions x window_size
+        exp_probability_action_given_stimulus_o2v = \
+            np.sum(transitions_actionscount_to_stimulus_o2v,axis=2) \
+                    / np.sum(transitions_actionscount_to_stimulus_o2v,axis=(1,2))[:,np.newaxis,:]
+        exp_probability_action_given_stimulus_v2o = \
+            np.sum(transitions_actionscount_to_stimulus_v2o,axis=2) \
+                    / np.sum(transitions_actionscount_to_stimulus_v2o,axis=(1,2))[:,np.newaxis,:]
+
+    # agent array has shape stimuli x windowsize x actions,
+    #  while exp array computed here using folds, has stimuli x actions x windowsize
+    exp_probability_action_given_stimulus_o2v = np.swapaxes(exp_probability_action_given_stimulus_o2v,1,2)
+    exp_probability_action_given_stimulus_v2o = np.swapaxes(exp_probability_action_given_stimulus_v2o,1,2)
+
     if fit_rewarded_stimuli_only:
         # stimuli are in the order: ['+v','-v','/+v','/-v','+o','-o']
         # we select indices 0,2,4
         agent_probability_action_given_stimulus_v2o = \
-            agent_probability_action_given_stimulus_v2o[[0,2,4],:]
+            agent_probability_action_given_stimulus_v2o[[0,2,4],:,:]
         agent_probability_action_given_stimulus_o2v = \
-            agent_probability_action_given_stimulus_o2v[[0,2,4],:]
+            agent_probability_action_given_stimulus_o2v[[0,2,4],:,:]
         exp_probability_action_given_stimulus_v2o = \
-            exp_probability_action_given_stimulus_v2o[[0,2,4],:]
+            exp_probability_action_given_stimulus_v2o[[0,2,4],:,:]
         exp_probability_action_given_stimulus_o2v = \
-            exp_probability_action_given_stimulus_o2v[[0,2,4],:]
-    
+            exp_probability_action_given_stimulus_o2v[[0,2,4],:,:]
+        
     ### Only compare steps around transition to model where experiment doesn't have a nan
     nonans_o2v = ~np.isnan(exp_probability_action_given_stimulus_o2v)
     nonans_v2o = ~np.isnan(exp_probability_action_given_stimulus_v2o)
@@ -187,81 +244,96 @@ def rootmeansquarederror(exp_probability_action_given_stimulus_o2v,
 
 def simulate_and_mse(parameters,
                     agent_type, agent, steps,
-                    mean_probability_action_given_stimulus_o2v,
-                    mean_probability_action_given_stimulus_v2o,
-                    fit_rewarded_stimuli_only, num_params_to_fit, half_window, seed):
-
+                    transitions_actionscount_to_stimulus_o2v,
+                    transitions_actionscount_to_stimulus_v2o,
+                    fit_rewarded_stimuli_only, num_params_to_fit,
+                    half_window, seeds, test=False):
     print("Training agent with parameters = ",parameters)
-    agent.reset() # also resets seeds of agent and env
+    num_folds = len(seeds)
+    rmses = np.zeros(num_folds)
+    # compute rmse for each seed and take mean of rmses across seeds.
+    for fold_num,seed in enumerate(seeds):
+        print('Simulation and RMSE computation for agent with seed =',seed,
+                            'and fold =',fold_num+1,'of',num_folds,'folds.')
+        agent.seed = seed
+        agent.reset() # also resets seeds of agent and env
 
-    if agent_type == 'belief':
-        belief_switching_rate = parameters[0]
-        agent.belief_switching_rate = belief_switching_rate
-        context_error_noiseSD_factor = parameters[1]
-        agent.context_error_noiseSD_factor = context_error_noiseSD_factor
-        if num_params_to_fit == 3:
-            exploration_rate = parameters[2]
+        if agent_type == 'belief':
+            belief_switching_rate = parameters[0]
+            agent.belief_switching_rate = belief_switching_rate
+            context_error_noiseSD_factor = parameters[1]
+            agent.context_error_noiseSD_factor = context_error_noiseSD_factor
+            if num_params_to_fit == 3:
+                exploration_rate = parameters[2]
+                agent.epsilon = exploration_rate
+            if num_params_to_fit == 4:
+                unrewarded_visual_exploration_rate = parameters[3]
+                agent.unrewarded_visual_exploration_rate = unrewarded_visual_exploration_rate
+            #    learning_rate = parameters[3]
+            #    agent.alpha = learning_rate
+            #belief_exploration_add_factor = parameters[2]
+            #agent.belief_exploration_add_factor = \
+            #        belief_exploration_add_factor
+            #weak_visual_factor = parameters[2]
+            #agent.weak_visual_factor = weak_visual_factor
+        else:
+            exploration_rate = parameters[0]
+            learning_rate = parameters[1]
+            agent.alpha = learning_rate
             agent.epsilon = exploration_rate
-        if num_params_to_fit == 4:
-            unrewarded_visual_exploration_rate = parameters[3]
-            agent.unrewarded_visual_exploration_rate = unrewarded_visual_exploration_rate
-        #    learning_rate = parameters[3]
-        #    agent.alpha = learning_rate
-        #belief_exploration_add_factor = parameters[2]
-        #agent.belief_exploration_add_factor = \
-        #        belief_exploration_add_factor
-        #weak_visual_factor = parameters[2]
-        #agent.weak_visual_factor = weak_visual_factor
-    else:
-        exploration_rate = parameters[0]
-        learning_rate = parameters[1]
-        agent.alpha = learning_rate
-        agent.epsilon = exploration_rate
-        if num_params_to_fit == 3:
-            unrewarded_visual_exploration_rate = parameters[2]
-            agent.unrewarded_visual_exploration_rate = unrewarded_visual_exploration_rate
+            if num_params_to_fit == 3:
+                unrewarded_visual_exploration_rate = parameters[2]
+                agent.unrewarded_visual_exploration_rate = unrewarded_visual_exploration_rate
 
-    # train the RL agent on the task
-    exp_step, block_vector_exp_compare, \
-        reward_vector_exp_compare, stimulus_vector_exp_compare, \
-            action_vector_exp_compare, context_record, mismatch_error_record = \
-                agent.train(steps)
+        # train the RL agent on the task
+        exp_step, block_vector_exp_compare, \
+            reward_vector_exp_compare, stimulus_vector_exp_compare, \
+                action_vector_exp_compare, context_record, mismatch_error_record = \
+                    agent.train(steps)
 
-    # obtain the mean reward and action given stimulus around O2V transition
-    # no need to pass above variables as they are not modified, only analysed
-    average_reward_around_o2v_transition, \
-        actionscount_to_stimulus_o2v, \
-        actionscount_to_stimulus_bytrials_o2v, \
-        probability_action_given_stimulus_o2v, \
-        probability_action_given_stimulus_bytrials_o2v, \
-        context_o2v, mismatch_error_o2v, mismatch_by_perfectswitch_o2v = \
-            process_transitions(exp_step, block_vector_exp_compare,
-                                reward_vector_exp_compare,
-                                stimulus_vector_exp_compare,
-                                action_vector_exp_compare,
-                                context_record, mismatch_error_record,
-                                O2V = True, half_window=half_window)
+        # obtain the mean reward and action given stimulus around O2V transition
+        # no need to pass above variables as they are not modified, only analysed
+        average_reward_around_o2v_transition, \
+            actionscount_to_stimulus_o2v, \
+            actionscount_to_stimulus_bytrials_o2v, \
+            probability_action_given_stimulus_o2v, \
+            probability_action_given_stimulus_bytrials_o2v, \
+            context_o2v, mismatch_error_o2v, mismatch_by_perfectswitch_o2v = \
+                process_transitions(exp_step, block_vector_exp_compare,
+                                    reward_vector_exp_compare,
+                                    stimulus_vector_exp_compare,
+                                    action_vector_exp_compare,
+                                    context_record, mismatch_error_record,
+                                    O2V = True, half_window=half_window)
 
-    # obtain the mean reward and action given stimulus around V2O transition
-    # no need to pass above variables as they are not modified, only analysed
-    average_reward_around_v2o_transition, \
-        actionscount_to_stimulus_v2o, \
-        actionscount_to_stimulus_bytrials_v2o, \
-        probability_action_given_stimulus_v2o, \
-        probability_action_given_stimulus_bytrials_v2o, \
-        context_v2o, mismatch_error_v2o, mismatch_by_perfectswitch_v2o = \
-            process_transitions(exp_step, block_vector_exp_compare,
-                                reward_vector_exp_compare,
-                                stimulus_vector_exp_compare,
-                                action_vector_exp_compare,
-                                context_record, mismatch_error_record,
-                                O2V = False, half_window=half_window)
+        # obtain the mean reward and action given stimulus around V2O transition
+        # no need to pass above variables as they are not modified, only analysed
+        average_reward_around_v2o_transition, \
+            actionscount_to_stimulus_v2o, \
+            actionscount_to_stimulus_bytrials_v2o, \
+            probability_action_given_stimulus_v2o, \
+            probability_action_given_stimulus_bytrials_v2o, \
+            context_v2o, mismatch_error_v2o, mismatch_by_perfectswitch_v2o = \
+                process_transitions(exp_step, block_vector_exp_compare,
+                                    reward_vector_exp_compare,
+                                    stimulus_vector_exp_compare,
+                                    action_vector_exp_compare,
+                                    context_record, mismatch_error_record,
+                                    O2V = False, half_window=half_window)
 
-    rmse = rootmeansquarederror(mean_probability_action_given_stimulus_o2v,
-                            mean_probability_action_given_stimulus_v2o,
-                            probability_action_given_stimulus_o2v,
-                            probability_action_given_stimulus_v2o,
-                            fit_rewarded_stimuli_only, num_params_to_fit)
+        rmses[fold_num] = rootmeansquarederror(transitions_actionscount_to_stimulus_o2v,
+                                transitions_actionscount_to_stimulus_v2o,
+                                probability_action_given_stimulus_o2v,
+                                probability_action_given_stimulus_v2o,
+                                fit_rewarded_stimuli_only, num_params_to_fit,
+                                fold_num=fold_num, num_folds=num_folds, test=test)
 
+        print('RMSE =',rmses[fold_num],'for agent with seed =',seed,
+                            'and fold =',fold_num+1,'of',num_folds,'folds.')
+    
+    rmse = np.mean(rmses)
+    print('RMSEs of 5 seeds =',rmses)
+    print('Mean RMSE across 5 seeds =',rmse,'for params',parameters)
+    print()
     return rmse
 

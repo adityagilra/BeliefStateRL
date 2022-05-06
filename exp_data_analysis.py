@@ -114,6 +114,7 @@ def get_exp_reward_around_transition(trans='O2V',ACC='control',
     mice_actionscount_to_stimulus = np.zeros((number_of_mice,6,window,2)) # 6 stimuli, 2 actions
     mice_actionscount_to_stimulus_trials = np.zeros((number_of_mice,6,window,2)) # 6 stimuli, 2 actions
     sessions_actionscount_to_stimulus = [[[],[]],[[],[]],[[],[]],[[],[]],[[],[]],[[],[]]] # 6 stimuli, 2 actions
+    transitions_actionscount_to_stimulus = [[[],[]],[[],[]],[[],[]],[[],[]],[[],[]],[[],[]]] # 6 stimuli, 2 actions
 
     for mouse_number in mice_list:
         # steps around transitions for one mouse
@@ -146,8 +147,8 @@ def get_exp_reward_around_transition(trans='O2V',ACC='control',
         transition_rewards = \
             transition_positive_rewards * reward_size \
                 - transition_negative_rewards * punish_factor*reward_size
-        print("shape of rewards array around transition",
-                    transition_rewards.shape)
+        #print("shape of rewards array around transition",
+        #            transition_rewards.shape)
         average_reward_around_transition = np.mean(transition_rewards,axis=0)
         
         mice_average_reward_around_transtion[mouse_number,:] = average_reward_around_transition
@@ -174,9 +175,13 @@ def get_exp_reward_around_transition(trans='O2V',ACC='control',
                                 & (transition_corrects[session_index,:]==lick_to_correct[1])
                 mice_actionscount_to_stimulus[mouse_number,stimulus_index,:,0] += stim_nolick
                 mice_actionscount_to_stimulus[mouse_number,stimulus_index,:,1] += stim_lick
-                # for mean and SD:
+                # for mean and SD of action prob across sessions (obsolete):
                 sessions_actionscount_to_stimulus[stimulus_index][0].append(stim_nolick)
                 sessions_actionscount_to_stimulus[stimulus_index][1].append(stim_lick)
+                # transitions_actionscount_to_stimulus will have dimensions:
+                #  stimuli x actions x transitions x window_size
+                transitions_actionscount_to_stimulus[stimulus_index][0].append(stim_nolick)
+                transitions_actionscount_to_stimulus[stimulus_index][1].append(stim_lick)
 
                 ##### trials around transition -- since an olfactory trial may have 1 or 2 'steps' (cf. above)
                 ##### convert from steps to trials for each session, while maintaining transition index at the center
@@ -257,7 +262,8 @@ def get_exp_reward_around_transition(trans='O2V',ACC='control',
                 mice_actionscount_to_stimulus,
                 mice_actionscount_to_stimulus_trials,
                 mice_probability_action_given_stimulus,
-                mean_probability_action_given_stimulus)
+                mean_probability_action_given_stimulus,
+                np.array(transitions_actionscount_to_stimulus))
 
 def plot_prob_actions_given_stimuli(units='steps', trans='O2V'):
     # no need to pass in:
@@ -402,7 +408,8 @@ if __name__ == "__main__":
         mice_actionscount_to_stimulus, \
         mice_actionscount_to_stimulus_trials, \
         mice_probability_action_given_stimulus, \
-        mean_probability_action_given_stimulus = \
+        mean_probability_action_given_stimulus, \
+        transitions_actionscount_to_stimulus = \
             get_exp_reward_around_transition(trans='O2V',ACC=ACC)
 
     fig1 = plt.figure()
@@ -424,7 +431,8 @@ if __name__ == "__main__":
         mice_actionscount_to_stimulus, \
         mice_actionscount_to_stimulus_trials, \
         mice_probability_action_given_stimulus, \
-        mean_probability_action_given_stimulus = \
+        mean_probability_action_given_stimulus, \
+        transitions_actionscount_to_stimulus = \
             get_exp_reward_around_transition(trans='V2O',ACC=ACC)
 
     plot_prob_actions_given_stimuli(trans='V2O')

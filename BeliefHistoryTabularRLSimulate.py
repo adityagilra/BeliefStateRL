@@ -60,8 +60,10 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_
             #  i.e. we avoid fitting to stimuli -v, /-v and -o
             #  which are not rewarded and the punishment value is unclear.
             #  with bug-fixed nan-s to nan-s fitting,
-            epsilon, alpha = 0.21976563, 0.96556641 # fit p(lick|stimuli) for only reward-structure-known stimuli # exploration on during testing # fitted successfully with mse = 0.005474
-            #epsilon, alpha = 0.20625835, 0.9112167 # fit p(lick|stimuli) for all stimuli # exploration on during testing # fitted successfully with mse = 0.004342
+            #epsilon, alpha = 0.21976563, 0.96556641 # fit p(lick|stimuli) for only reward-structure-known stimuli # exploration on during testing # fitted successfully with mse = 0.005474
+            epsilon, alpha = 0.20625835, 0.9112167 # fit p(lick|stimuli) for all stimuli # exploration on during testing # fitted successfully with mse = 0.004342
+            #epsilon, alpha = 0.25056614, 0.84921649 # fit p(lick|stimuli) for all stimuli using local COBYLA fit # exploration on during testing # fitted successfully with mse =  0.01824815015852233 , old mse =  0.009030705234997848, when running with seed 1: mse = 0.13487851276740936 , old mse =  0.0089601199048506
+            
             # setting this to None will make it not be used
             unrewarded_visual_exploration_rate = None
         else:
@@ -70,6 +72,8 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_
                     #= 0.22270257, 0.87529689, 0.3458835 # mse = 0.018739743421187977, old mse = 0.009238249518122875, COBYLA local fit tol=0.0005 successfully
             epsilon, alpha, unrewarded_visual_exploration_rate \
                     = 0.25618055, 0.78719931, 0.30161107 # mse = 0.008409035747337732, brute and then local fit fmin: did not fit -- max func evals exceeded, fit all 4 curves.
+            #epsilon, alpha, unrewarded_visual_exploration_rate \
+            #        = 0.29128861, 0.81420369, 0.37465497 # mse = 0.01882887557954043 , old mse =  0.009362525753524403, COBYLA local fit tol=0.0005 successfully, starting from: exploration_rate_start = 0.2, larning_rate_start = 0.8, unrewarded_visual_exploration_rate_start = 0.5
 
         learning_during_testing = True
         params_all = ((epsilon, alpha, unrewarded_visual_exploration_rate), learning_during_testing)
@@ -148,12 +152,14 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_
 
             elif num_params_to_fit == 4:
                 ##### obtained by 4-param fit
+                #belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
+                #            = 0.69474268, 2.10976159, 0.09317885, 0.46556799 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # mse = 0.003098491835327584, old mse = 0.0015597898820416504, reward structure 1, 1, 1, COBYLA local fit tol=0.0005 successfully, starting from values: 0.7, 2., 0.1, 0.4
                 belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
-                            = 0.69474268, 2.10976159, 0.09317885, 0.46556799 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # mse = 0.003098491835327584, old mse = 0.0015597898820416504, reward structure 1, 1, 1, COBYLA local fit tol=0.0005 successfully, starting from values: 0.7, 2., 0.1, 0.4
+                            = 0.77983832, 0.50027674, 0.50625, 0.45619092 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # RMSE across 5 seeds: train =  0.06020246514855136, test =  0.1041516546778553, reward structure 1, 1, 1, COBYLA local fit tol=0.0005 successfully, starting from values: 0.73125, 0.50625, 0.50625, 0.45815625
                 #belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
                 #            = 0.90470671, 1.63768158, 0.26397918, 0.44469277 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # mse = 0.003232071343265149 , old mse =  0.0016175240716927593, reward structure 1, 1, 1, COBYLA local fit tol=0.0005 successfully, starting from values: 0.9, 1.625, 0.255, 0.4525 -- not so good mse = 0.009899, sensitive to seed perhaps
                 #belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
-                #            = 0.78155776, 0.50658442, 0.50604311, 0.45813087 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # mse = 0.0032915614142155743, old mse =  0.0016503114709468334, reward structure 1, 1, 1, COBYLA local fit tol=0.0005 successfully, starting from values: 0.73125, 0.50625, 0.50625, 0.45815625 -- awful mse = 0.036 when running here, possibly very sensitive to seed
+                #            = 0.78155776, 0.50658442, 0.50604311, 0.45813087 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # mse = 0.0032915614142155743, old mse =  0.0016503114709468334, reward structure 1, 1, 1, COBYLA local fit tol=0.0005 successfully, starting from values: 0.73125, 0.50625, 0.50625, 0.45815625 -- awful mse = 0.036 when running here, possibly very sensitive to seed?
                 #belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
                             #= 0.73125, 0.50625, 0.50625, 0.45815625 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # mse = 0.0176209908141966, reward structure 1, 1, 1, max func evals exceeded -- did not fit
                 exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1

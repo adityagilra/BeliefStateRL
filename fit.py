@@ -10,13 +10,13 @@ from plot_simulation_data import half_window
 
 if __name__ == "__main__":
 
-    #agent_type = 'belief'
-    agent_type = 'basic'
+    agent_type = 'belief'
+    #agent_type = 'basic'
     
     if agent_type == 'basic':
         # choose one of the below
-        num_params_to_fit = 2 # for both basic and belief RL
-        #num_params_to_fit = 3 # for both basic and belief RL
+        #num_params_to_fit = 2 # for both basic and belief RL
+        num_params_to_fit = 3 # for both basic and belief RL
     else:
         # choose one of the below
         #num_params_to_fit = 2 # for both basic and belief RL
@@ -57,7 +57,8 @@ if __name__ == "__main__":
         mice_actionscount_to_stimulus_o2v, \
         mice_actionscount_to_stimulus_trials_o2v, \
         mice_probability_action_given_stimulus_o2v, \
-        mean_probability_action_given_stimulus_o2v = \
+        mean_probability_action_given_stimulus_o2v, \
+        transitions_actionscount_to_stimulus_o2v = \
             get_exp_reward_around_transition(trans='O2V',ACC=ACC_str,
                                             mice_list=mice_list,sessions_list=sessions_list)
     number_of_mice, across_mice_average_reward_v2o, \
@@ -65,7 +66,8 @@ if __name__ == "__main__":
         mice_actionscount_to_stimulus_v2o, \
         mice_actionscount_to_stimulus_trials_v2o, \
         mice_probability_action_given_stimulus_v2o, \
-        mean_probability_action_given_stimulus_v2o = \
+        mean_probability_action_given_stimulus_v2o, \
+        transitions_actionscount_to_stimulus_v2o = \
             get_exp_reward_around_transition(trans='V2O',ACC=ACC_str,
                                             mice_list=mice_list,sessions_list=sessions_list)
     print("finished reading experimental data.")
@@ -128,7 +130,7 @@ if __name__ == "__main__":
     elif agent_type == 'basic':
         if num_params_to_fit == 2:
             exploration_rate_start = 0.2
-            learning_rate_start = 0.8
+            learning_rate_start = 0.9
             parameters = (exploration_rate_start, learning_rate_start)
             ranges = ((0.1,0.5),(0.1,0.9))
             #bounds_obj = Bounds((0.,0.),(1.,1.))
@@ -193,12 +195,22 @@ if __name__ == "__main__":
 
     # Brute optimization is too slow; and compared to a coarse grid, manual tuning is better!
     # Set good starting parameters manually and then do local optimization
+    seeds = (1,2,3,4,5) # length decides how many fold validation
     result = minimize( simulate_and_mse, parameters,
                         args=(agent_type, agent, steps,
-                                mean_probability_action_given_stimulus_o2v,
-                                mean_probability_action_given_stimulus_v2o,
-                                fit_rewarded_stimuli_only, num_params_to_fit, half_window, seed),
-                        method='COBYLA', options={'tol':0.0005, 'rhobeg':0.05, 'disp':True}
+                                transitions_actionscount_to_stimulus_o2v,
+                                transitions_actionscount_to_stimulus_v2o,
+                                fit_rewarded_stimuli_only, num_params_to_fit,
+                                half_window, seeds),
+                        method='COBYLA', options={'tol':0.0001, 'rhobeg':0.05, 'disp':True}
                         )
+    
+    test_rmse = simulate_and_mse(result.x, agent_type, agent, steps,
+                                transitions_actionscount_to_stimulus_o2v,
+                                transitions_actionscount_to_stimulus_v2o,
+                                fit_rewarded_stimuli_only, num_params_to_fit,
+                                half_window, seeds, test=True)
 
-    print(result)
+    print('Training result =',result)
+    print('Mean test RMSE =',test_rmse)
+
