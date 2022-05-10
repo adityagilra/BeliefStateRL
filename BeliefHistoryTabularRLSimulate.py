@@ -230,8 +230,8 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_
 if __name__ == "__main__":
 
     ############## choose / uncomment one of the agents below! #################
-    #agent_type='belief'
-    agent_type='basic'
+    agent_type='belief'
+    #agent_type='basic'
 
     if agent_type == 'basic':
         # choose one of the below

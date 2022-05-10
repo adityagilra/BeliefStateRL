@@ -107,7 +107,7 @@ if __name__ == "__main__":
         #belief_exploration_add_factor_start = 8
         #weak_visual_factor_start = 0.3
         unrewarded_visual_exploration_rate_start = 0.4 #0.45815625#0.4
-        context_error_noiseSD_factor_start = 0.2 #0.50625#2
+        context_error_noiseSD_factor_start = 2 #0.50625#2
         if num_params_to_fit == 2:
             parameters = (belief_switching_rate_start,
                         context_error_noiseSD_factor_start)
