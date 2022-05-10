@@ -247,14 +247,14 @@ def simulate_and_mse(parameters,
                     transitions_actionscount_to_stimulus_o2v,
                     transitions_actionscount_to_stimulus_v2o,
                     fit_rewarded_stimuli_only, num_params_to_fit,
-                    half_window, seeds, test=False):
+                    half_window, seeds, k_idx, k_validation, test=False):
     print("Training agent with parameters = ",parameters)
-    num_folds = len(seeds)
-    rmses = np.zeros(num_folds)
+    num_seeds = len(seeds)
+    rmses = np.zeros(num_seeds)
     # compute rmse for each seed and take mean of rmses across seeds.
-    for fold_num,seed in enumerate(seeds):
+    for seed_idx,seed in enumerate(seeds):
         print('Simulation and RMSE computation for agent with seed =',seed,
-                            'and fold =',fold_num+1,'of',num_folds,'folds.')
+                            'and fold =',k_idx+1,'of',k_validation,'folds.')
         agent.seed = seed
         agent.reset() # also resets seeds of agent and env
 
@@ -321,19 +321,20 @@ def simulate_and_mse(parameters,
                                     context_record, mismatch_error_record,
                                     O2V = False, half_window=half_window)
 
-        rmses[fold_num] = rootmeansquarederror(transitions_actionscount_to_stimulus_o2v,
+        rmses[seed_idx] = rootmeansquarederror(transitions_actionscount_to_stimulus_o2v,
                                 transitions_actionscount_to_stimulus_v2o,
                                 probability_action_given_stimulus_o2v,
                                 probability_action_given_stimulus_v2o,
                                 fit_rewarded_stimuli_only, num_params_to_fit,
-                                fold_num=fold_num, num_folds=num_folds, test=test)
+                                fold_num=k_idx, num_folds=k_validation, test=test)
 
-        print('RMSE =',rmses[fold_num],'for agent with seed =',seed,
-                            'and fold =',fold_num+1,'of',num_folds,'folds.')
+        print('RMSE =',rmses[seed_idx],'for agent with seed =',seed,
+                            'and fold =',k_idx+1,'of',k_validation,'folds.')
     
     rmse = np.mean(rmses)
-    print('RMSEs of 5 seeds =',rmses)
-    print('Mean RMSE across 5 seeds =',rmse,'for params',parameters)
+    print('Cross-validation fold =',k_idx+1,'of',k_validation,'folds.')
+    print('RMSEs of',num_seeds,'seeds =',rmses)
+    print('Mean RMSE across',num_seeds,'seeds =',rmse,'for params',parameters)
     print()
     return rmse
 

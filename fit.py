@@ -15,8 +15,8 @@ if __name__ == "__main__":
     
     if agent_type == 'basic':
         # choose one of the below
-        #num_params_to_fit = 2 # for both basic and belief RL
-        num_params_to_fit = 3 # for both basic and belief RL
+        num_params_to_fit = 2 # for both basic and belief RL
+        #num_params_to_fit = 3 # for both basic and belief RL
     else:
         # choose one of the below
         #num_params_to_fit = 2 # for both basic and belief RL
@@ -97,8 +97,8 @@ if __name__ == "__main__":
         steps = 500000
 
     if agent_type == 'belief':
-        belief_switching_rate_start = 0.73125#0.7
-        exploration_rate_start = 0.50625#0.1
+        belief_switching_rate_start = 0.7 #0.73125#0.7
+        exploration_rate_start = 0.1 #0.50625#0.1
         learning_rate_start = 0.1
         #parameters = (belief_switching_rate_start,
         #                exploration_rate_start, learning_rate_start)
@@ -106,8 +106,8 @@ if __name__ == "__main__":
         #bounds_obj = Bounds((0.5,0.,0.),(0.9,1.,1.))
         #belief_exploration_add_factor_start = 8
         #weak_visual_factor_start = 0.3
-        unrewarded_visual_exploration_rate_start = 0.45815625#0.4
-        context_error_noiseSD_factor_start = 0.50625#2
+        unrewarded_visual_exploration_rate_start = 0.4 #0.45815625#0.4
+        context_error_noiseSD_factor_start = 0.2 #0.50625#2
         if num_params_to_fit == 2:
             parameters = (belief_switching_rate_start,
                         context_error_noiseSD_factor_start)
@@ -195,22 +195,37 @@ if __name__ == "__main__":
 
     # Brute optimization is too slow; and compared to a coarse grid, manual tuning is better!
     # Set good starting parameters manually and then do local optimization
-    seeds = (1,2,3,4,5) # length decides how many fold validation
-    result = minimize( simulate_and_mse, parameters,
-                        args=(agent_type, agent, steps,
-                                transitions_actionscount_to_stimulus_o2v,
-                                transitions_actionscount_to_stimulus_v2o,
-                                fit_rewarded_stimuli_only, num_params_to_fit,
-                                half_window, seeds),
-                        method='COBYLA', options={'tol':0.0001, 'rhobeg':0.05, 'disp':True}
-                        )
-    
-    test_rmse = simulate_and_mse(result.x, agent_type, agent, steps,
-                                transitions_actionscount_to_stimulus_o2v,
-                                transitions_actionscount_to_stimulus_v2o,
-                                fit_rewarded_stimuli_only, num_params_to_fit,
-                                half_window, seeds, test=True)
 
-    print('Training result =',result)
-    print('Mean test RMSE =',test_rmse)
+    # number of seeds used per mse calculation given params
+    #seeds = (1,2,3,4,5)
+    seeds = (1,)
+    k_validation = 5 # how many fold validation
+    train_rmses = []
+    params_k = []
+    test_rmses = []
+    for k_idx in range(k_validation):
+        result = minimize( simulate_and_mse, parameters,
+                            args=(agent_type, agent, steps,
+                                    transitions_actionscount_to_stimulus_o2v,
+                                    transitions_actionscount_to_stimulus_v2o,
+                                    fit_rewarded_stimuli_only, num_params_to_fit,
+                                    half_window, seeds, k_idx, k_validation),
+                            method='COBYLA', options={'tol':1e-6, 'rhobeg':0.05, 'disp':True}
+                            )
+        train_rmses.append(result.fun)
+        params_k.append(result.x)
+        
+        test_rmse = simulate_and_mse(result.x, agent_type, agent, steps,
+                                    transitions_actionscount_to_stimulus_o2v,
+                                    transitions_actionscount_to_stimulus_v2o,
+                                    fit_rewarded_stimuli_only, num_params_to_fit,
+                                    half_window, seeds, k_idx, k_validation, test=True)
+        test_rmses.append(test_rmse)
+
+        print('Training result =',result)
+        print('Mean test RMSE =',test_rmse)
+
+    print(k_validation,'-fold cross-validation params:',params_k)
+    print(k_validation,'-fold cross-validation training rmses =',train_rmses)
+    print(k_validation,'-fold cross-validation test rmses =',test_rmses)
 

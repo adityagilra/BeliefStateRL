@@ -152,10 +152,10 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_
 
             elif num_params_to_fit == 4:
                 ##### obtained by 4-param fit
-                #belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
-                #            = 0.69474268, 2.10976159, 0.09317885, 0.46556799 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # mse = 0.003098491835327584, old mse = 0.0015597898820416504, reward structure 1, 1, 1, COBYLA local fit tol=0.0005 successfully, starting from values: 0.7, 2., 0.1, 0.4
                 belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
-                            = 0.77983832, 0.50027674, 0.50625, 0.45619092 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # RMSE across 5 seeds: train =  0.06020246514855136, test =  0.1041516546778553, reward structure 1, 1, 1, COBYLA local fit tol=0.0005 successfully, starting from values: 0.73125, 0.50625, 0.50625, 0.45815625
+                            = 0.69474268, 2.10976159, 0.09317885, 0.46556799 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # mse = 0.003098491835327584, old mse = 0.0015597898820416504, reward structure 1, 1, 1, COBYLA local fit tol=0.0005 successfully, starting from values: 0.7, 2., 0.1, 0.4
+                #belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
+                #            = 0.77983832, 0.50027674, 0.50625, 0.45619092 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # RMSE across 5 seeds: train =  0.06020246514855136, test =  0.1041516546778553, reward structure 1, 1, 1, COBYLA local fit tol=0.0005 successfully, starting from values: 0.73125, 0.50625, 0.50625, 0.45815625
                 #belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
                 #            = 0.90470671, 1.63768158, 0.26397918, 0.44469277 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # mse = 0.003232071343265149 , old mse =  0.0016175240716927593, reward structure 1, 1, 1, COBYLA local fit tol=0.0005 successfully, starting from values: 0.9, 1.625, 0.255, 0.4525 -- not so good mse = 0.009899, sensitive to seed perhaps
                 #belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
@@ -230,8 +230,8 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_
 if __name__ == "__main__":
 
     ############## choose / uncomment one of the agents below! #################
-    agent_type='belief'
-    #agent_type='basic'
+    #agent_type='belief'
+    agent_type='basic'
 
     if agent_type == 'basic':
         # choose one of the below

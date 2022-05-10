@@ -96,15 +96,35 @@ def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
             axabstract.set_ylabel('P(lick|stimulus)')
             axabstract.set_xlim([-half_window,half_window])
 
-        if paper_plots:
-            plot_without_nans(axpaper, xvec,probability_action_given_stimulus_bytrials\
+    if paper_plots:
+        # combine plots of visual stimuli coded as 0,1 in visual block and coded as 2,3 in olfactory block into 1 plot of visual stimuli
+        p_act_compact = np.zeros((4,half_window*2+1))
+        if trans == 'O2V':
+            rangeV = range(half_window+1,2*half_window+1)
+            rangeO = range(0,half_window+1)
+        else: # V2O transition
+            rangeO = range(half_window,2*half_window+1)
+            rangeV = range(0,half_window)
+        p_act_compact[0,rangeV] = probability_action_given_stimulus_bytrials[0,rangeV,1] # visual block, visual stim 0 , lick 1
+        p_act_compact[1,rangeV] = probability_action_given_stimulus_bytrials[1,rangeV,1] # visual block, visual stim 1 , lick 1
+        p_act_compact[0,rangeO] = probability_action_given_stimulus_bytrials[2,rangeO,1] # olfactory block, visual stim 2 , lick 1
+        p_act_compact[1,rangeO] = probability_action_given_stimulus_bytrials[3,rangeO,1] # olfactory block, visual stim 3 , lick 1
+        for stimulus_index in range(2):
+            plot_without_nans(axpaper, xvec, p_act_compact\
+                                        [stimulus_index,:], marker='.',
+                                        color=colors[stimulus_index],
+                                        linestyle='solid',
+                                        label=labels[stimulus_index])
+        # olfactory plots remain the same as they only appear in olfactory block
+        for stimulus_index in range(4,6):
+            plot_without_nans(axpaper, xvec, probability_action_given_stimulus_bytrials\
                                         [stimulus_index,:,1], marker='.',
                                         color=colors[stimulus_index],
                                         linestyle='solid',
                                         label=labels[stimulus_index])
-            axpaper.set_xlabel('trials around '+trans+' transition')
-            axpaper.set_ylabel('P(lick|stimulus)')
-            axpaper.set_xlim([-half_window,half_window])
+        axpaper.set_xlabel('trials around '+trans+' transition')
+        axpaper.set_ylabel('P(lick|stimulus)')
+        axpaper.set_xlim([-half_window//2,half_window//2])
 
     if agent_type=='belief':
         # context beliefs and mismatch (context prediction error) signals
@@ -136,29 +156,39 @@ def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
         figpaper.savefig('RL_'+agent_type+'_'+trans+'.pdf')
         figpaper.savefig('RL_'+agent_type+'_'+trans+'.svg')
 
+def plot_without_nans(ax,x,y,*args,**kwargs):
+    nonans_idxs = ~np.isnan(y)
+    ax.plot( np.array(x)[nonans_idxs], np.array(y)[nonans_idxs], *args, **kwargs )
+
 def plot_mismatch_vs_perfectswitch(mismatch_by_perfectswitch_o2v, mismatch_by_perfectswitch_v2o):
+    print('Numbers of imperfect and perfect switches for O2V =',
+            len(mismatch_by_perfectswitch_o2v[0]),len(mismatch_by_perfectswitch_o2v[1]))
+    print('Numbers of imperfect and perfect switches for V2O =',
+            len(mismatch_by_perfectswitch_v2o[0]),len(mismatch_by_perfectswitch_v2o[1]))
     ranksumstat, pvalue = scipy.stats.ranksums(mismatch_by_perfectswitch_o2v[0],mismatch_by_perfectswitch_o2v[1])
     print('Wilcoxon rank sum: O2V ranksumstat, pvalue =', ranksumstat, pvalue)
     ranksumstat, pvalue = scipy.stats.ranksums(mismatch_by_perfectswitch_v2o[0],mismatch_by_perfectswitch_v2o[1])
     print('Wilcoxon rank sum: V2O ranksumstat, pvalue =', ranksumstat, pvalue)
     res = scipy.stats.mannwhitneyu(mismatch_by_perfectswitch_o2v[0],mismatch_by_perfectswitch_o2v[1])
-    print('Mann Whitney U: O2V U_x, pvalue =', res.statistic, res.pvalue)
+    print('Mann Whitney U: O2V U statistic for imperfect switch, pvalue =', res.statistic, res.pvalue)
     res = scipy.stats.mannwhitneyu(mismatch_by_perfectswitch_v2o[0],mismatch_by_perfectswitch_v2o[1])
-    print('Mann Whitney U: V2O U_x, pvalue =', res.statistic, res.pvalue)
+    print('Mann Whitney U: V2O U statistic for imperfect switch, pvalue =', res.statistic, res.pvalue)
     fig, ax = plt.subplots(1,2)
     #ax[0].bar( ['wrong switch','correct switch'],
     #            [np.mean(mismatch_by_perfectswitch_o2v[0]),np.mean(mismatch_by_perfectswitch_o2v[1])],
     #            yerr=[np.std(mismatch_by_perfectswitch_o2v[0]),np.std(mismatch_by_perfectswitch_o2v[1])] )
     ax[0].boxplot( mismatch_by_perfectswitch_o2v )
     ax[0].set_xticklabels(['imperfect switch','perfect switch'])
-    ax[0].set_ylabel('mismatch error O2V')
-    #ax[1].bar( ['wrong switch','correct switch'],
+    ax[0].set_ylabel('block mismatch signal O2V')
+    #ax[1].bar( [' switch','correct switch'],
     #            [np.mean(mismatch_by_perfectswitch_v2o[0]),np.mean(mismatch_by_perfectswitch_v2o[1])],
     #            yerr=[np.std(mismatch_by_perfectswitch_v2o[0]),np.std(mismatch_by_perfectswitch_v2o[1])] )
     ax[1].boxplot( mismatch_by_perfectswitch_v2o )
     ax[1].set_xticklabels(['imperfect switch','perfect switch'])
-    ax[1].set_ylabel('mismatch error V2O')
+    ax[1].set_ylabel('block mismatch signal V2O')
     fig.tight_layout()
+    fig.savefig('mismatch.pdf')
+    fig.savefig('mismatch.svg')
 
 def load_plot_simdata(filename):
 
@@ -295,11 +325,7 @@ def load_plot_simdata(filename):
                                 fit_rewarded_stimuli_only, num_params_to_fit) )
 
     plt.show()
-    
-def plot_without_nans(ax,x,y,*args,**kwargs):
-    nonans_idxs = ~np.isnan(y)
-    ax.plot( np.array(x)[nonans_idxs], np.array(y)[nonans_idxs], *args, **kwargs )
-    
+        
 if __name__ == "__main__":
     load_plot_simdata('simulation_data/simdata_belief_numparams4_ACCcontrol_seed1.mat')
 
