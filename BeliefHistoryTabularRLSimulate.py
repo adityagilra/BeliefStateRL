@@ -121,14 +121,16 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_
         # one way of introducing noise in switching i.e. after a transition could be due to
         #  sampling current context from the context belief probability distribution
         # choose whether context_sampling is True or False below
-        context_sampling = True
-        #context_sampling = False
+        #context_sampling = True
+        context_sampling = False
 
         # another way to introduce noise in context setting could be due to a noisy integrate to threshold
-        # can just add a noise (parameterized by SD below) to the context belief probabilities and then take max
-        #context_noiseSD = 
-        
+        # can just add a noise (parameterized by SD below) to the context belief probabilities and then take max        
         # noise could also be from context error signal in the ACC parametrized by a context_error_noiseSD_factor
+
+        # setting this param to None will make it not be used
+        unrewarded_visual_exploration_rate = None
+
         if context_sampling:
             if num_params_to_fit == 2:
                 belief_switching_rate, context_error_noiseSD_factor \
@@ -136,7 +138,7 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_
                 #belief_switching_rate, context_error_noiseSD_factor \
                 #            = 0.594375  , 4.26855469 # fit p(lick|stimuli) for all 4 stimuli # exploration off during testing, & context_sampling=True # mse = 0.004001
                 epsilon, exploration_add_factor_for_context_uncertainty, alpha = 0.1, 0, 0.1
-                unrewarded_visual_exploration_rate = 0.4
+                #unrewarded_visual_exploration_rate = 0.4
 
                 #context_error_noiseSD_factor = 0.            
                 ##belief_switching_rate, epsilon, exploration_add_factor_for_context_uncertainty, alpha \
@@ -153,7 +155,9 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_
             elif num_params_to_fit == 4:
                 ##### obtained by 4-param fit
                 belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
-                            = 0.69474268, 2.10976159, 0.09317885, 0.46556799 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # mse = 0.003098491835327584, old mse = 0.0015597898820416504, reward structure 1, 1, 1, COBYLA local fit tol=0.0005 successfully, starting from values: 0.7, 2., 0.1, 0.4
+                            = 0.58155763, 0.65325136, 0.10499605, 0.3698203 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # 1 set of 5 params in 5-fold CV # seed=1 # rmse = 0.06311081856834604, test rmse = 0.10123140221991846, reward structure 1, 1, 1, COBYLA local fit tol=5e-6 successfully, starting from poor values: 0.73125, 0.50625, 0.50625, 0.45815625
+                #belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
+                #            = 0.69474268, 2.10976159, 0.09317885, 0.46556799 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # mse = 0.003098491835327584, old mse = 0.0015597898820416504, reward structure 1, 1, 1, COBYLA local fit tol=0.0005 successfully, starting from values: 0.7, 2., 0.1, 0.4
                 #belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
                 #            = 0.77983832, 0.50027674, 0.50625, 0.45619092 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=True # RMSE across 5 seeds: train =  0.06020246514855136, test =  0.1041516546778553, reward structure 1, 1, 1, COBYLA local fit tol=0.0005 successfully, starting from values: 0.73125, 0.50625, 0.50625, 0.45815625
                 #belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
@@ -184,13 +188,17 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_
             elif num_params_to_fit == 3:
                 ##### obtained by 3-param fit
                 belief_switching_rate, context_error_noiseSD_factor, epsilon \
-                            = 0.3172727, 4.61738219, 0.01069627 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # mse = 0.003145373498646748, reward structure 1, 1, 1
+                            = 0.3172727, 4.61738219, 0.01069627
+                #belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
+                #            = 0.69703441, 0., 0.09965295, 0.44441895
                 exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
 
             elif num_params_to_fit == 4:
                 ##### obtained by 4-param fit
                 belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
-                            = 0.46048665, 4.90591006, 0.51447091, 0.44796221 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # mse = 0.0021553571995931737, reward structure 1, 1, 1, max func evals exceeded -- did not fit
+                            = 0.69703441, 2.01253643, 0.09965295, 0.44441895 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # 1 set of 5 params in 5-fold CV # seed=1 # rmse = 0.05923636041587643, test rmse = 0.09877881078233221, reward structure 1, 1, 1, COBYLA local fit tol=5e-6 successfully, starting from good values: 0.7, 2., 0.1, 0.4
+                #belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
+                #            = 0.46048665, 4.90591006, 0.51447091, 0.44796221 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # mse = 0.0021553571995931737, reward structure 1, 1, 1, max func evals exceeded -- did not fit
                 exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
 
                 #belief_switching_rate, context_error_noiseSD_factor, epsilon, alpha \

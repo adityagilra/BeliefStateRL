@@ -15,12 +15,12 @@ if __name__ == "__main__":
     
     if agent_type == 'basic':
         # choose one of the below
-        num_params_to_fit = 2 # for both basic and belief RL
-        #num_params_to_fit = 3 # for both basic and belief RL
+        #num_params_to_fit = 2 
+        num_params_to_fit = 3 
     else:
         # choose one of the below
-        #num_params_to_fit = 2 # for both basic and belief RL
-        #num_params_to_fit = 3 # for both basic and belief RL
+        #num_params_to_fit = 2 
+        #num_params_to_fit = 3 
         num_params_to_fit = 4 # only for belief RL
 
     # choose one of the two below, either fit only rewarded stimuli (+v, /+v, +o),
@@ -117,6 +117,10 @@ if __name__ == "__main__":
                         context_error_noiseSD_factor_start,
                         exploration_rate_start)
             ranges = ((0.3,0.9),(0.5,5.),(0.01,0.5))
+            #parameters = (belief_switching_rate_start,
+            #            unrewarded_visual_exploration_rate_start,
+            #            exploration_rate_start)
+            #ranges = ((0.3,0.9),(0.01,0.6),(0.01,0.5))
         elif num_params_to_fit == 4:
             parameters = (belief_switching_rate_start,
                         context_error_noiseSD_factor_start,

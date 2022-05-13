@@ -263,6 +263,8 @@ def simulate_and_mse(parameters,
             agent.belief_switching_rate = belief_switching_rate
             context_error_noiseSD_factor = parameters[1]
             agent.context_error_noiseSD_factor = context_error_noiseSD_factor
+            #unrewarded_visual_exploration_rate = parameters[1]
+            #agent.unrewarded_visual_exploration_rate = unrewarded_visual_exploration_rate
             if num_params_to_fit >= 3:
                 exploration_rate = parameters[2]
                 agent.epsilon = exploration_rate
