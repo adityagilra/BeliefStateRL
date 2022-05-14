@@ -269,7 +269,7 @@ if __name__ == "__main__":
     #ACC_off = True
     ACC_off = False
     if ACC_off:
-        ACC_off_factor = 0.5 # inhibited ACC
+        ACC_off_factor = 0.35 # inhibited ACC, param obtained by fitting 1-param (rest default 4-param fit) to ACC off data
         ACC_str = 'exp'
     else:
         ACC_off_factor = 1.0 # uninhibited ACC
