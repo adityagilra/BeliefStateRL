@@ -257,8 +257,8 @@ if __name__ == "__main__":
     fit_rewarded_stimuli_only = False
     
     # choose whether ACC is inhibited or not
-    #ACC_off = True
-    ACC_off = False
+    ACC_off = True
+    #ACC_off = False
     if ACC_off:
         ACC_off_factor = 0.5 # inhibited ACC
         ACC_str = 'exp'

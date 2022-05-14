@@ -14,7 +14,7 @@ import scipy.stats
 import sys
 
 from exp_data_analysis import get_exp_reward_around_transition
-from utils import rootmeansquarederror,  process_transitions
+from utils import rootmeansquarederror,  process_transitions, get_switchtimes
 
 # number of steps on each side of the transition to consider
 half_window = 30
@@ -190,8 +190,7 @@ def plot_mismatch_vs_perfectswitch(mismatch_by_perfectswitch_o2v, mismatch_by_pe
     fig.savefig('mismatch.pdf')
     fig.savefig('mismatch.svg')
 
-def load_plot_simdata(filename):
-
+def load_simdata(filename):
     simdata = scipyio.loadmat(filename)
     steps = simdata['steps'][0,0]
     params_all = simdata['params_all'][0]
@@ -207,10 +206,63 @@ def load_plot_simdata(filename):
     action_vector_exp_compare = simdata['action_vector_exp_compare'][0]
     context_record = simdata['context_record']
     mismatch_error_record = simdata['mismatch_error_record']
-    
+
+    return (steps, params_all, exp_step, fit_rewarded_stimuli_only,
+            agent_type, num_params_to_fit, ACC_str, seed,
+            block_vector_exp_compare,
+            reward_vector_exp_compare,
+            stimulus_vector_exp_compare,
+            action_vector_exp_compare,
+            context_record,
+            mismatch_error_record)
+
+
+def load_plot_simdata(filename):
+
+    steps, params_all, exp_step, fit_rewarded_stimuli_only,
+    agent_type, num_params_to_fit, ACC_str, seed,
+    block_vector_exp_compare,
+    reward_vector_exp_compare,
+    stimulus_vector_exp_compare,
+    action_vector_exp_compare,
+    context_record,
+    mismatch_error_record = load_simdata(filename)
+
     detailed_plots = False
     abstract_plots = False
     paper_plots = True
+
+    # choose one of the two below, either load exp data for 1 session only, or for all mice, all sessions.
+    #load_a_session = True
+    load_a_session = False
+    if load_a_session:
+        mice_list = [0]
+        sessions_list = [0]
+    else:
+        mice_list = None
+        sessions_list = None
+
+    # read experimental data
+    print("reading experimental data")
+    number_of_mice, across_mice_average_reward_o2v, \
+        mice_average_reward_around_transtion_o2v, \
+        mice_actionscount_to_stimulus_o2v, \
+        mice_actionscount_to_stimulus_trials_o2v, \
+        mice_probability_action_given_stimulus_o2v, \
+        mean_probability_action_given_stimulus_o2v, \
+        transitions_actionscount_to_stimulus_o2v = \
+            get_exp_reward_around_transition(trans='O2V',ACC=ACC_str,
+                                            mice_list=mice_list,sessions_list=sessions_list)
+    number_of_mice, across_mice_average_reward_v2o, \
+        mice_average_reward_around_transtion_v2o, \
+        mice_actionscount_to_stimulus_v2o, \
+        mice_actionscount_to_stimulus_trials_v2o, \
+        mice_probability_action_given_stimulus_v2o, \
+        mean_probability_action_given_stimulus_v2o, \
+        transitions_actionscount_to_stimulus_v2o = \
+            get_exp_reward_around_transition(trans='V2O',ACC=ACC_str,
+                                            mice_list=mice_list,sessions_list=sessions_list)
+    print("finished reading experimental data.")
 
     ## obsolete - start
     #fig1 = plt.figure()
@@ -246,38 +298,6 @@ def load_plot_simdata(filename):
                         max(average_reward_around_o2v_transition)])
         plt.xlabel('time steps around olfactory to visual transition')
         plt.ylabel('average reward on time step')
-
-    # choose one of the two below, either load exp data for 1 session only, or for all mice, all sessions.
-    #load_a_session = True
-    load_a_session = False
-    if load_a_session:
-        mice_list = [0]
-        sessions_list = [0]
-    else:
-        mice_list = None
-        sessions_list = None
-
-    # read experimental data
-    print("reading experimental data")
-    number_of_mice, across_mice_average_reward_o2v, \
-        mice_average_reward_around_transtion_o2v, \
-        mice_actionscount_to_stimulus_o2v, \
-        mice_actionscount_to_stimulus_trials_o2v, \
-        mice_probability_action_given_stimulus_o2v, \
-        mean_probability_action_given_stimulus_o2v, \
-        transitions_actionscount_to_stimulus_o2v = \
-            get_exp_reward_around_transition(trans='O2V',ACC=ACC_str,
-                                            mice_list=mice_list,sessions_list=sessions_list)
-    number_of_mice, across_mice_average_reward_v2o, \
-        mice_average_reward_around_transtion_v2o, \
-        mice_actionscount_to_stimulus_v2o, \
-        mice_actionscount_to_stimulus_trials_v2o, \
-        mice_probability_action_given_stimulus_v2o, \
-        mean_probability_action_given_stimulus_v2o, \
-        transitions_actionscount_to_stimulus_v2o = \
-            get_exp_reward_around_transition(trans='V2O',ACC=ACC_str,
-                                            mice_list=mice_list,sessions_list=sessions_list)
-    print("finished reading experimental data.")
 
     plot_prob_actions_given_stimuli(probability_action_given_stimulus_o2v,
                                     probability_action_given_stimulus_bytrials_o2v,
@@ -324,8 +344,56 @@ def load_plot_simdata(filename):
                                 probability_action_given_stimulus_v2o,
                                 fit_rewarded_stimuli_only, num_params_to_fit) )
 
-    plt.show()
+def load_plot_ACConvsoff(filenameACCon, filenameACCoff):
+
+    window = 20
+    fig, ax = plt.subplots(1,2,figsize=(10, 5))
+
+    (steps, params_all, exp_step, fit_rewarded_stimuli_only,
+    agent_type, num_params_to_fit, ACC_str, seed,
+    block_vector_exp_compare,
+    reward_vector_exp_compare,
+    stimulus_vector_exp_compare,
+    action_vector_exp_compare,
+    context_record,
+    mismatch_error_record) = load_simdata(filenameACCon)
+
+    switchtimes_O2V = get_switchtimes(True, window, exp_step, block_vector_exp_compare,
+                        stimulus_vector_exp_compare, action_vector_exp_compare)
+    switchtimes_V2O = get_switchtimes(False, window, exp_step, block_vector_exp_compare,
+                        stimulus_vector_exp_compare, action_vector_exp_compare)
+    xvals = range(window)
+    ax[0].bar(xvals,switchtimes_O2V,width=1,color=(1,0,0,0.5))
+    ax[1].bar(xvals,switchtimes_V2O,width=1,color=(1,0,0,0.5))
+
+    (steps, params_all, exp_step, fit_rewarded_stimuli_only,
+    agent_type, num_params_to_fit, ACC_str, seed,
+    block_vector_exp_compare,
+    reward_vector_exp_compare,
+    stimulus_vector_exp_compare,
+    action_vector_exp_compare,
+    context_record,
+    mismatch_error_record) = load_simdata(filenameACCoff)
+
+    switchtimes_O2V = get_switchtimes(True, window, exp_step, block_vector_exp_compare,
+                        stimulus_vector_exp_compare, action_vector_exp_compare)
+    switchtimes_V2O = get_switchtimes(False, window, exp_step, block_vector_exp_compare,
+                        stimulus_vector_exp_compare, action_vector_exp_compare)
+    ax[0].bar(xvals,switchtimes_O2V,width=1,color=(0,0,1,0.5))
+    ax[1].bar(xvals,switchtimes_V2O,width=1,color=(0,0,1,0.5))
+    
+    ax[0].set_ylabel('Fraction of switches')
+    ax[0].set_xlabel('Number of trials to lick to visual stimulus')
+    ax[1].set_xlabel('Number of trials to ignore visual stimulus')
+    ax[0].title.set_text('Switching from olfactory to visual block')
+    ax[1].title.set_text('Switching from visual to olfactory block')
+
+    fig.savefig('switchtimes.pdf')
+    fig.savefig('switchtimes.svg')
         
 if __name__ == "__main__":
-    load_plot_simdata('simulation_data/simdata_belief_numparams4_ACCcontrol_seed1.mat')
+    #load_plot_simdata('simulation_data/simdata_belief_numparams4_ACCcontrol_seed1.mat')
+    load_plot_ACConvsoff('simulation_data/simdata_belief_numparams4_ACCcontrol_seed1.mat',
+                        'simulation_data/simdata_belief_numparams4_ACCexp_seed1.mat')
+    plt.show()
 

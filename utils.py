@@ -123,15 +123,50 @@ def process_transitions(exp_step, block_vector_exp_compare,
                 probability_action_given_stimulus_bytrials, \
                 context, mismatch_error, mismatch_by_perfectswitch
 
+def get_switchtimes(O2V, window, exp_step, block_vector_exp_compare,
+                 stimulus_vector_exp_compare, action_vector_exp_compare):
+    # exp_step is the last step saved
+    transitions = \
+        np.where(np.diff(block_vector_exp_compare[:exp_step])==(-1 if O2V else 1))[0] + 1
+    # note that block number changes on the first time step of a new trial,
+    print('Number of '+('O2V' if O2V else 'V2O')+' transitions =', len(transitions))
+    
+    switch_counts = np.zeros(window)
+    if O2V:
+        rewarded_visual = 1
+        correct_action = 1
+    else:
+        rewarded_visual = 3
+        correct_action = 0    
+    for transition in transitions:
+        contiguous_correct_count = 0
+        stim_count = 0
+        for idx in range(window):
+            tidx = transition+idx
+            if tidx < exp_step:
+                #print(tidx,stimulus_vector_exp_compare[tidx])
+                if stimulus_vector_exp_compare[tidx] == rewarded_visual:
+                    stim_count += 1
+                    if action_vector_exp_compare[tidx] == correct_action:
+                        contiguous_correct_count += 1
+                        if contiguous_correct_count == 3: # switch considered as done
+                            # -3 to avoid 0s for first 3 trials
+                            switch_counts[stim_count-3] += 1
+                            break # break out of inner loop, on to next transition
+                    else:
+                        contiguous_correct_count = 0
+    
+    return switch_counts/len(transitions)
 
 def rootmeansquarederror(transitions_actionscount_to_stimulus_o2v,
                     transitions_actionscount_to_stimulus_v2o,
                     agent_probability_action_given_stimulus_o2v,
                     agent_probability_action_given_stimulus_v2o,
                     fit_rewarded_stimuli_only, num_params,
-                    fold_num=None, num_folds=None, test=False):
+                    fold_num=1, num_folds=1, test=False):
 
-    if num_folds is not None:
+    ## if cross-validating, take only partial data depending on fold_num & num_folds
+    if num_folds > 1:
         print('Using fold',fold_num+1,'of',num_folds)
         # transitions_actionscount_to_stimulus has dimensions:
         #  stimuli x actions x transitions x window_size
@@ -170,6 +205,7 @@ def rootmeansquarederror(transitions_actionscount_to_stimulus_o2v,
             np.sum(fold_actionscount_to_stimulus_v2o,axis=2) \
                     / np.sum(fold_actionscount_to_stimulus_v2o,axis=(1,2))[:,np.newaxis,:]
 
+    ## no cross-validation, use all data for train / test (test=False/True)
     else: # use all transitions in exp data for RMSE
         # divide by total number of actions taken for each stimulus.
         #  i.e. normalize lick & nolick counts to give probability

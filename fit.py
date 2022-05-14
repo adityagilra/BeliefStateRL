@@ -10,13 +10,13 @@ from plot_simulation_data import half_window
 
 if __name__ == "__main__":
 
-    agent_type = 'belief'
-    #agent_type = 'basic'
+    #agent_type = 'belief'
+    agent_type = 'basic'
     
     if agent_type == 'basic':
         # choose one of the below
-        #num_params_to_fit = 2 
-        num_params_to_fit = 3 
+        num_params_to_fit = 2 
+        #num_params_to_fit = 3 
     else:
         # choose one of the below
         #num_params_to_fit = 2 
@@ -28,7 +28,17 @@ if __name__ == "__main__":
     #fit_rewarded_stimuli_only = True
     fit_rewarded_stimuli_only = False
 
-    seed = 1
+    seed = 1 # only to instantiate env & agent, not used in local COBYLA fitting
+
+    ## cross-validation is set for COBLYA fitting
+    # how many fold cross-validation
+    #k_validation = 5 # how many fold cross-validation
+    k_validation = 1 # no cross-validation, train and test on all data
+    # number of seeds used per mse calculation given params
+    if k_validation > 1:
+        seeds = (1,) # less computation when using cross-validation
+    else:
+        seeds = (1,2,3,4,5)
     
     # choose whether ACC is inhibited or not
     #ACC_off = True
@@ -97,8 +107,8 @@ if __name__ == "__main__":
         steps = 500000
 
     if agent_type == 'belief':
-        belief_switching_rate_start = 0.7 #0.73125#0.7
-        exploration_rate_start = 0.1 #0.50625#0.1
+        belief_switching_rate_start = 0.7
+        exploration_rate_start = 0.1
         learning_rate_start = 0.1
         #parameters = (belief_switching_rate_start,
         #                exploration_rate_start, learning_rate_start)
@@ -106,8 +116,8 @@ if __name__ == "__main__":
         #bounds_obj = Bounds((0.5,0.,0.),(0.9,1.,1.))
         #belief_exploration_add_factor_start = 8
         #weak_visual_factor_start = 0.3
-        unrewarded_visual_exploration_rate_start = 0.4 #0.45815625#0.4
-        context_error_noiseSD_factor_start = 2 #0.50625#2
+        unrewarded_visual_exploration_rate_start = 0.4
+        context_error_noiseSD_factor_start = 2.
         if num_params_to_fit == 2:
             parameters = (belief_switching_rate_start,
                         context_error_noiseSD_factor_start)
@@ -141,6 +151,9 @@ if __name__ == "__main__":
         elif num_params_to_fit == 3:
             exploration_rate_start = 0.2
             learning_rate_start = 0.8
+            # unrewarded_visual_exploration_rate doesn't make the fit any better since:
+            # BasicRL doesn't have a notion of context/block, so it will modulate unrewarded visual cue exploration
+            #  irrespective of block, unlike in the experiment where only the olfactory block has this higher exploration!
             unrewarded_visual_exploration_rate_start = 0.5
             parameters = (exploration_rate_start, 
                             learning_rate_start,
@@ -200,10 +213,6 @@ if __name__ == "__main__":
     # Brute optimization is too slow; and compared to a coarse grid, manual tuning is better!
     # Set good starting parameters manually and then do local optimization
 
-    # number of seeds used per mse calculation given params
-    #seeds = (1,2,3,4,5)
-    seeds = (1,)
-    k_validation = 5 # how many fold validation
     train_rmses = []
     params_k = []
     test_rmses = []
