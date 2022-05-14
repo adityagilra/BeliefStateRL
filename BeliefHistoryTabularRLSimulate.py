@@ -14,11 +14,12 @@ import sys
 
 from BeliefHistoryTabularRL import BeliefHistoryTabularRL
 from plot_simulation_data import load_plot_simdata
+from plot_exp_sim_data import load_plot_expsimdata
 
 # reproducible random number generation -- env and agent use independent RNGs with same seed currently
 seed = 1
 
-def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_fit = 3):
+def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_fit = 4):
     # use one of these environments,
     #  with or without blank state at start of each trial
     # OBSOLETE - with blanks environment won't work,
@@ -46,6 +47,8 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_
         #steps = 1000000
         steps = 2000000
 
+        learning_during_testing = True
+
         if num_params_to_fit == 2:
             ### 2-param fit using brute to minimize mse,
             #  ended without success, due to exceeding max func evals
@@ -61,11 +64,15 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_
             #  which are not rewarded and the punishment value is unclear.
             #  with bug-fixed nan-s to nan-s fitting,
             #epsilon, alpha = 0.21976563, 0.96556641 # fit p(lick|stimuli) for only reward-structure-known stimuli # exploration on during testing # fitted successfully with mse = 0.005474
-            epsilon, alpha = 0.20625835, 0.9112167 # fit p(lick|stimuli) for all stimuli # exploration on during testing # fitted successfully with mse = 0.004342
+            
+            epsilon, alpha = 0.24694724, 0.9 # fit p(lick|stimuli) for all stimuli # exploration on during testing # fitted successfully with mean rmse = 0.13484248472193172 across 5 seeds fitting all data using reward structure 1, 1, 1, COBYLA local fit tol=5e-6 successfully
+
+            #epsilon, alpha = 0.20625835, 0.9112167 # fit p(lick|stimuli) for all stimuli # exploration on during testing # fitted successfully with mse = 0.004342
             #epsilon, alpha = 0.25056614, 0.84921649 # fit p(lick|stimuli) for all stimuli using local COBYLA fit # exploration on during testing # fitted successfully with mse =  0.01824815015852233 , old mse =  0.009030705234997848, when running with seed 1: mse = 0.13487851276740936 , old mse =  0.0089601199048506
             
             # setting this to None will make it not be used
             unrewarded_visual_exploration_rate = None
+            params_all = ((epsilon, alpha), learning_during_testing)
         else:
             ### 3-param fit
             #epsilon, alpha, unrewarded_visual_exploration_rate \
@@ -74,9 +81,8 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_
                     = 0.25618055, 0.78719931, 0.30161107 # mse = 0.008409035747337732, brute and then local fit fmin: did not fit -- max func evals exceeded, fit all 4 curves.
             #epsilon, alpha, unrewarded_visual_exploration_rate \
             #        = 0.29128861, 0.81420369, 0.37465497 # mse = 0.01882887557954043 , old mse =  0.009362525753524403, COBYLA local fit tol=0.0005 successfully, starting from: exploration_rate_start = 0.2, larning_rate_start = 0.8, unrewarded_visual_exploration_rate_start = 0.5
+            params_all = ((epsilon, alpha, unrewarded_visual_exploration_rate), learning_during_testing)
 
-        learning_during_testing = True
-        params_all = ((epsilon, alpha, unrewarded_visual_exploration_rate), learning_during_testing)
         agent = BeliefHistoryTabularRL(env,history=0,beliefRL=False,
                                         alpha=alpha,epsilon=epsilon,seed=seed,
                                         unrewarded_visual_exploration_rate=unrewarded_visual_exploration_rate,
@@ -128,7 +134,7 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_
         # can just add a noise (parameterized by SD below) to the context belief probabilities and then take max        
         # noise could also be from context error signal in the ACC parametrized by a context_error_noiseSD_factor
 
-        # setting this param to None will make it not be used
+        # setting this param to None will make it not be used except when overridden below
         unrewarded_visual_exploration_rate = None
 
         if context_sampling:
@@ -196,7 +202,10 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_
             elif num_params_to_fit == 4:
                 ##### obtained by 4-param fit
                 belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
-                            = 0.69703441, 2.01253643, 0.09965295, 0.44441895 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # 1 set of 5 params in 5-fold CV # seed=1 # rmse = 0.05923636041587643, test rmse = 0.09877881078233221, reward structure 1, 1, 1, COBYLA local fit tol=5e-6 successfully, starting from good values: 0.7, 2., 0.1, 0.4
+                            = 0.71308534, 2.05177685, 0.08250793, 0.47370851  # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # rmse = 0.05396551893600141 across 5 seeds fitting all data using reward structure 1, 1, 1, COBYLA local fit tol=5e-6 successfully, starting from good values: 0.7, 2., 0.1, 0.4
+
+                #belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
+                #            = 0.69703441, 2.01253643, 0.09965295, 0.44441895 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # 1 set of 5 params in 5-fold CV # seed=1 # rmse = 0.05923636041587643, test rmse = 0.09877881078233221, reward structure 1, 1, 1, COBYLA local fit tol=5e-6 successfully, starting from good values: 0.7, 2., 0.1, 0.4
                 #belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
                 #            = 0.46048665, 4.90591006, 0.51447091, 0.44796221 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # mse = 0.0021553571995931737, reward structure 1, 1, 1, max func evals exceeded -- did not fit
                 exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
@@ -243,8 +252,8 @@ if __name__ == "__main__":
 
     if agent_type == 'basic':
         # choose one of the below
-        #num_params_to_fit = 2 # for both basic and belief RL
-        num_params_to_fit = 3 # for both basic and belief RL
+        num_params_to_fit = 2 # for both basic and belief RL
+        #num_params_to_fit = 3 # for both basic and belief RL
     else:
         # choose one of the below
         #num_params_to_fit = 2 # for both basic and belief RL
@@ -257,8 +266,8 @@ if __name__ == "__main__":
     fit_rewarded_stimuli_only = False
     
     # choose whether ACC is inhibited or not
-    ACC_off = True
-    #ACC_off = False
+    #ACC_off = True
+    ACC_off = False
     if ACC_off:
         ACC_off_factor = 0.5 # inhibited ACC
         ACC_str = 'exp'
@@ -281,9 +290,12 @@ if __name__ == "__main__":
     print('Q-values dict {state: context x action} = ',agent.Q_array)
 
     savefilename = 'simulation_data/simdata_'+agent_type+'_numparams'+str(num_params_to_fit)+'_ACC'+ACC_str+'_seed'+str(seed)+'.mat'
+    print('Saving to',savefilename)
+    # params_all is a 'ragged' tuple with different dtypes (including NoneType),
+    #  not saving it as it cannot be converted to an array to save into a .mat file
     scipyio.savemat(savefilename,
                         {'steps':steps,
-                        'params_all':params_all,
+                        #'params_all':params_all,
                         'exp_step':exp_step,
                         'fit_rewarded_stimuli_only':fit_rewarded_stimuli_only,
                         'agent_type':agent_type,
@@ -297,4 +309,5 @@ if __name__ == "__main__":
                         'context_record':context_record,
                         'mismatch_error_record':mismatch_error_record})    
 
+    load_plot_expsimdata(savefilename)
     load_plot_simdata(savefilename)

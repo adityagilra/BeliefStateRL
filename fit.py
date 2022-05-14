@@ -10,8 +10,8 @@ from plot_simulation_data import half_window
 
 if __name__ == "__main__":
 
-    #agent_type = 'belief'
-    agent_type = 'basic'
+    agent_type = 'belief'
+    #agent_type = 'basic'
     
     if agent_type == 'basic':
         # choose one of the below
@@ -41,8 +41,8 @@ if __name__ == "__main__":
         seeds = (1,2,3,4,5)
     
     # choose whether ACC is inhibited or not
-    #ACC_off = True
-    ACC_off = False
+    ACC_off = True
+    #ACC_off = False
     if ACC_off:
         ACC_off_factor = 0.5 # inhibited ACC
         ACC_str = 'exp'
@@ -164,6 +164,11 @@ if __name__ == "__main__":
         print('Unimplemented agent type: ',agent_type)
         sys.exit(1)
 
+    if ACC_off:
+        # fit only ACC_off_factor, all other params remain default as returned by get_env_agent()
+        parameters = (ACC_off_factor,)
+        ranges = ((0.,1.),)
+
     # local & global optimization are possible
     #  https://docs.scipy.org/doc/scipy/reference/optimize.html
     #  https://docs.scipy.org/doc/scipy/reference/reference/optimize.html#module-scipy.optimize
@@ -222,7 +227,7 @@ if __name__ == "__main__":
                                     transitions_actionscount_to_stimulus_o2v,
                                     transitions_actionscount_to_stimulus_v2o,
                                     fit_rewarded_stimuli_only, num_params_to_fit,
-                                    half_window, seeds, k_idx, k_validation),
+                                    half_window, seeds, k_idx, k_validation, ACC_off),
                             method='COBYLA', options={'tol':1e-6, 'rhobeg':0.05, 'disp':True}
                             )
         train_rmses.append(result.fun)
@@ -232,7 +237,7 @@ if __name__ == "__main__":
                                     transitions_actionscount_to_stimulus_o2v,
                                     transitions_actionscount_to_stimulus_v2o,
                                     fit_rewarded_stimuli_only, num_params_to_fit,
-                                    half_window, seeds, k_idx, k_validation, test=True)
+                                    half_window, seeds, k_idx, k_validation, ACC_off, test=True)
         test_rmses.append(test_rmse)
 
         print('Training result =',result)

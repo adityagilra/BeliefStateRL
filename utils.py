@@ -163,7 +163,7 @@ def rootmeansquarederror(transitions_actionscount_to_stimulus_o2v,
                     agent_probability_action_given_stimulus_o2v,
                     agent_probability_action_given_stimulus_v2o,
                     fit_rewarded_stimuli_only, num_params,
-                    fold_num=1, num_folds=1, test=False):
+                    fold_num=0, num_folds=1, test=False):
 
     ## if cross-validating, take only partial data depending on fold_num & num_folds
     if num_folds > 1:
@@ -283,7 +283,7 @@ def simulate_and_mse(parameters,
                     transitions_actionscount_to_stimulus_o2v,
                     transitions_actionscount_to_stimulus_v2o,
                     fit_rewarded_stimuli_only, num_params_to_fit,
-                    half_window, seeds, k_idx, k_validation, test=False):
+                    half_window, seeds, k_idx, k_validation, ACC_off=False, test=False):
     print("Training agent with parameters = ",parameters)
     num_seeds = len(seeds)
     rmses = np.zeros(num_seeds)
@@ -295,25 +295,29 @@ def simulate_and_mse(parameters,
         agent.reset() # also resets seeds of agent and env
 
         if agent_type == 'belief':
-            belief_switching_rate = parameters[0]
-            agent.belief_switching_rate = belief_switching_rate
-            context_error_noiseSD_factor = parameters[1]
-            agent.context_error_noiseSD_factor = context_error_noiseSD_factor
-            #unrewarded_visual_exploration_rate = parameters[1]
-            #agent.unrewarded_visual_exploration_rate = unrewarded_visual_exploration_rate
-            if num_params_to_fit >= 3:
-                exploration_rate = parameters[2]
-                agent.epsilon = exploration_rate
-            if num_params_to_fit >= 4:
-                unrewarded_visual_exploration_rate = parameters[3]
-                agent.unrewarded_visual_exploration_rate = unrewarded_visual_exploration_rate
-            #    learning_rate = parameters[3]
-            #    agent.alpha = learning_rate
-            #belief_exploration_add_factor = parameters[2]
-            #agent.belief_exploration_add_factor = \
-            #        belief_exploration_add_factor
-            #weak_visual_factor = parameters[2]
-            #agent.weak_visual_factor = weak_visual_factor
+            if not ACC_off:
+                belief_switching_rate = parameters[0]
+                agent.belief_switching_rate = belief_switching_rate
+                context_error_noiseSD_factor = parameters[1]
+                agent.context_error_noiseSD_factor = context_error_noiseSD_factor
+                #unrewarded_visual_exploration_rate = parameters[1]
+                #agent.unrewarded_visual_exploration_rate = unrewarded_visual_exploration_rate
+                if num_params_to_fit >= 3:
+                    exploration_rate = parameters[2]
+                    agent.epsilon = exploration_rate
+                if num_params_to_fit >= 4:
+                    unrewarded_visual_exploration_rate = parameters[3]
+                    agent.unrewarded_visual_exploration_rate = unrewarded_visual_exploration_rate
+                #    learning_rate = parameters[3]
+                #    agent.alpha = learning_rate
+                #belief_exploration_add_factor = parameters[2]
+                #agent.belief_exploration_add_factor = \
+                #        belief_exploration_add_factor
+                #weak_visual_factor = parameters[2]
+                #agent.weak_visual_factor = weak_visual_factor
+            else:
+                ACC_off_factor = parameters[0]
+                agent.ACC_off_factor = ACC_off_factor
         else:
             exploration_rate = parameters[0]
             learning_rate = parameters[1]
