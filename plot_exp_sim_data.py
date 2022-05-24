@@ -13,7 +13,7 @@ import sys
 
 from exp_data_analysis import get_exp_reward_around_transition
 from utils import rootmeansquarederror,  process_transitions, get_switchtimes
-from plot_simulation_data import load_simdata, plot_mismatch_vs_perfectswitch
+from plot_simulation_data import load_simdata_seeds, plot_mismatch_vs_perfectswitch
 
 # number of steps on each side of the transition to consider
 half_window = 30
@@ -116,16 +116,23 @@ def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
         figabstract.savefig('RL_'+agent_type+'_'+trans+'_cosyne.pdf')
         figabstract.savefig('RL_'+agent_type+'_'+trans+'_cosyne.svg')
 
-def load_plot_expsimdata(filename):
+def load_plot_expsimdata(filenamebase,seeds,new_data):
 
-    (steps, exp_step, fit_rewarded_stimuli_only,
-    agent_type, num_params_to_fit, ACC_str, seed,
-    block_vector_exp_compare,
-    reward_vector_exp_compare,
-    stimulus_vector_exp_compare,
-    action_vector_exp_compare,
-    context_record,
-    mismatch_error_record) = load_simdata(filename)
+    filenamebase += ('_newdata' if new_data else '')
+
+    exp_steps, ACC_str, agent_type,\
+        fit_rewarded_stimuli_only,\
+        num_params_to_fit,\
+        block_vector_exp_compare,\
+        reward_vector_exp_compare,\
+        stimulus_vector_exp_compare,\
+        action_vector_exp_compare,\
+        context_record,\
+        mismatch_error_record = load_simdata_seeds(filenamebase,seeds)
+
+    if new_data and ACC_str=='exp':
+        print('New (behaviour+neural) data does not have data for ACC off i.e. exp condition.')
+        sys.exit(1)
 
     detailed_plots = False
     abstract_plots = False
@@ -150,7 +157,8 @@ def load_plot_expsimdata(filename):
         mean_probability_action_given_stimulus_o2v, \
         transitions_actionscount_to_stimulus_o2v = \
             get_exp_reward_around_transition(trans='O2V',ACC=ACC_str,
-                                            mice_list=mice_list,sessions_list=sessions_list)
+                                            mice_list=mice_list,sessions_list=sessions_list,
+                                            new_data=new_data)
     number_of_mice, across_mice_average_reward_v2o, \
         mice_average_reward_around_transtion_v2o, \
         mice_actionscount_to_stimulus_v2o, \
@@ -159,7 +167,8 @@ def load_plot_expsimdata(filename):
         mean_probability_action_given_stimulus_v2o, \
         transitions_actionscount_to_stimulus_v2o = \
             get_exp_reward_around_transition(trans='V2O',ACC=ACC_str,
-                                            mice_list=mice_list,sessions_list=sessions_list)
+                                            mice_list=mice_list,sessions_list=sessions_list,
+                                            new_data=new_data)
     print("finished reading experimental data.")
 
     ## obsolete - start
@@ -183,7 +192,7 @@ def load_plot_expsimdata(filename):
         probability_action_given_stimulus_o2v, \
         probability_action_given_stimulus_bytrials_o2v, \
         context_o2v, mismatch_error_o2v, mismatch_by_perfectswitch_o2v = \
-            process_transitions(exp_step, block_vector_exp_compare,
+            process_transitions(exp_steps, block_vector_exp_compare,
                                 reward_vector_exp_compare,
                                 stimulus_vector_exp_compare,
                                 action_vector_exp_compare,
@@ -214,7 +223,7 @@ def load_plot_expsimdata(filename):
         probability_action_given_stimulus_v2o, \
         probability_action_given_stimulus_bytrials_v2o, \
         context_v2o, mismatch_error_v2o, mismatch_by_perfectswitch_v2o = \
-            process_transitions(exp_step, block_vector_exp_compare,
+            process_transitions(exp_steps, block_vector_exp_compare,
                                 reward_vector_exp_compare, 
                                 stimulus_vector_exp_compare,
                                 action_vector_exp_compare,
@@ -248,8 +257,19 @@ def load_plot_expsimdata(filename):
     plt.show()
 
 if __name__ == "__main__":
+
+    # chooses one the below to average sim data over seeds
+    seeds = [1,2,3,4,5]
+    #seeds = [1]
+
+    # whether to load:
+    #  old (has ACC-on/control and ACC-off/exp) data,
+    #  or new (behaviour+neural w/ only ACC-on) data.
+    #new_data = True
+    new_data = False
+
     ## choose one of the below:
-    load_plot_expsimdata('simulation_data/simdata_belief_numparams4_ACCcontrol_seed1.mat') # BeliefRL, ACC on/normal
-    #load_plot_expsimdata('simulation_data/simdata_belief_numparams4_ACCexp_seed1.mat') # BeliefRL, ACC off
-    #load_plot_expsimdata('simulation_data/simdata_basic_numparams2_ACCcontrol_seed1.mat') # BasicRL, ACC on
+    load_plot_expsimdata('simulation_data/simdata_belief_numparams4_ACCcontrol',seeds,new_data) # BeliefRL, ACC on/normal
+    #load_plot_expsimdata('simulation_data/simdata_belief_numparams4_ACCexp',seeds,new_data) # BeliefRL, ACC off
+    #load_plot_expsimdata('simulation_data/simdata_basic_numparams2_ACCcontrol',seeds,new_data) # BasicRL, ACC on
 

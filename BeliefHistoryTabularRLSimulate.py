@@ -20,7 +20,7 @@ from plot_exp_sim_data import load_plot_expsimdata
 # set later in __main__
 #seed = 1
 
-def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_fit = 4):
+def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_fit=4, new_data=True):
     # use one of these environments,
     #  with or without blank state at start of each trial
     # OBSOLETE - with blanks environment won't work,
@@ -50,39 +50,52 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_
 
         learning_during_testing = True
 
-        if num_params_to_fit == 2:
-            ### 2-param fit using brute to minimize mse,
-            #  ended without success, due to exceeding max func evals
-            #epsilon, alpha = 0.21886517, 0.72834129
-            ## does not give a sudden peak/lick in /+V stimulus in V2O transition
-            #epsilon, alpha = 0.2, 0.2
-            ### 2-param fit using brute to minimize mse,
-            #  fitting nan-s to nan-s [update: was bug here], terminated successfully
-            #epsilon, alpha = 0.21947144, 0.76400787
-            ### 2-param fit to only 'rewarded' stimuli +v, /+v, +o
-            #  (though /+v i.e. +v in odor block is not rewarded!)
-            #  i.e. we avoid fitting to stimuli -v, /-v and -o
-            #  which are not rewarded and the punishment value is unclear.
-            #  with bug-fixed nan-s to nan-s fitting,
-            #epsilon, alpha = 0.21976563, 0.96556641 # fit p(lick|stimuli) for only reward-structure-known stimuli # exploration on during testing # fitted successfully with mse = 0.005474
-            
-            epsilon, alpha = 0.24694724, 0.9 # fit p(lick|stimuli) for all stimuli # exploration on during testing # fitted successfully with mean rmse = 0.13484248472193172 across 5 seeds fitting all data using reward structure 1, 1, 1, COBYLA local fit tol=5e-6 successfully
+        if new_data: # params for latest fits with new data (for Fig 1)
+            if num_params_to_fit == 2:
+                epsilon, alpha = 0.25004935, 0.9 # fit p(lick|stimuli) for all stimuli # exploration on during testing # fitted successfully with mean rmse = 0.1439542839678069 across 5 seeds fitting all data using reward structure 1, 1, 1, COBYLA local fit tol=5e-6 successfully
+                # setting below to None will make it not be used
+                unrewarded_visual_exploration_rate = None
+                params_all = ((epsilon, alpha), learning_during_testing)
+            else:
+                ### 3-param fit
+                epsilon, alpha, unrewarded_visual_exploration_rate \
+                        = 0.27232708, 0.74221187, 0.32848218 # fit p(lick|stimuli) for all stimuli # exploration on during testing # fitted successfully with mean rmse = 0.14638095502159895 across 5 seeds fitting all data using reward structure 1, 1, 1, COBYLA local fit tol=5e-6 successfully
+                params_all = ((epsilon, alpha, unrewarded_visual_exploration_rate), learning_during_testing)
 
-            #epsilon, alpha = 0.20625835, 0.9112167 # fit p(lick|stimuli) for all stimuli # exploration on during testing # fitted successfully with mse = 0.004342
-            #epsilon, alpha = 0.25056614, 0.84921649 # fit p(lick|stimuli) for all stimuli using local COBYLA fit # exploration on during testing # fitted successfully with mse =  0.01824815015852233 , old mse =  0.009030705234997848, when running with seed 1: mse = 0.13487851276740936 , old mse =  0.0089601199048506
-            
-            # setting this to None will make it not be used
-            unrewarded_visual_exploration_rate = None
-            params_all = ((epsilon, alpha), learning_during_testing)
-        else:
-            ### 3-param fit
-            #epsilon, alpha, unrewarded_visual_exploration_rate \
-                    #= 0.22270257, 0.87529689, 0.3458835 # mse = 0.018739743421187977, old mse = 0.009238249518122875, COBYLA local fit tol=0.0005 successfully
-            epsilon, alpha, unrewarded_visual_exploration_rate \
-                    = 0.25618055, 0.78719931, 0.30161107 # mse = 0.008409035747337732, brute and then local fit fmin: did not fit -- max func evals exceeded, fit all 4 curves.
-            #epsilon, alpha, unrewarded_visual_exploration_rate \
-            #        = 0.29128861, 0.81420369, 0.37465497 # mse = 0.01882887557954043 , old mse =  0.009362525753524403, COBYLA local fit tol=0.0005 successfully, starting from: exploration_rate_start = 0.2, larning_rate_start = 0.8, unrewarded_visual_exploration_rate_start = 0.5
-            params_all = ((epsilon, alpha, unrewarded_visual_exploration_rate), learning_during_testing)
+        else: # params for fits to older data (only for control vs exp time to perfect switch)
+            if num_params_to_fit == 2:
+                ### 2-param fit using brute to minimize mse,
+                #  ended without success, due to exceeding max func evals
+                #epsilon, alpha = 0.21886517, 0.72834129
+                ## does not give a sudden peak/lick in /+V stimulus in V2O transition
+                #epsilon, alpha = 0.2, 0.2
+                ### 2-param fit using brute to minimize mse,
+                #  fitting nan-s to nan-s [update: was bug here], terminated successfully
+                #epsilon, alpha = 0.21947144, 0.76400787
+                ### 2-param fit to only 'rewarded' stimuli +v, /+v, +o
+                #  (though /+v i.e. +v in odor block is not rewarded!)
+                #  i.e. we avoid fitting to stimuli -v, /-v and -o
+                #  which are not rewarded and the punishment value is unclear.
+                #  with bug-fixed nan-s to nan-s fitting,
+                #epsilon, alpha = 0.21976563, 0.96556641 # fit p(lick|stimuli) for only reward-structure-known stimuli # exploration on during testing # fitted successfully with mse = 0.005474
+                
+                epsilon, alpha = 0.24694724, 0.9 # fit p(lick|stimuli) for all stimuli # exploration on during testing # fitted successfully with mean rmse = 0.13484248472193172 across 5 seeds fitting all data using reward structure 1, 1, 1, COBYLA local fit tol=5e-6 successfully
+
+                #epsilon, alpha = 0.20625835, 0.9112167 # fit p(lick|stimuli) for all stimuli # exploration on during testing # fitted successfully with mse = 0.004342
+                #epsilon, alpha = 0.25056614, 0.84921649 # fit p(lick|stimuli) for all stimuli using local COBYLA fit # exploration on during testing # fitted successfully with mse =  0.01824815015852233 , old mse =  0.009030705234997848, when running with seed 1: mse = 0.13487851276740936 , old mse =  0.0089601199048506
+                
+                # setting below to None will make it not be used
+                unrewarded_visual_exploration_rate = None
+                params_all = ((epsilon, alpha), learning_during_testing)
+            else:
+                ### 3-param fit
+                #epsilon, alpha, unrewarded_visual_exploration_rate \
+                        #= 0.22270257, 0.87529689, 0.3458835 # mse = 0.018739743421187977, old mse = 0.009238249518122875, COBYLA local fit tol=0.0005 successfully
+                epsilon, alpha, unrewarded_visual_exploration_rate \
+                        = 0.25618055, 0.78719931, 0.30161107 # mse = 0.008409035747337732, brute and then local fit fmin: did not fit -- max func evals exceeded, fit all 4 curves.
+                #epsilon, alpha, unrewarded_visual_exploration_rate \
+                #        = 0.29128861, 0.81420369, 0.37465497 # mse = 0.01882887557954043 , old mse =  0.009362525753524403, COBYLA local fit tol=0.0005 successfully, starting from: exploration_rate_start = 0.2, larning_rate_start = 0.8, unrewarded_visual_exploration_rate_start = 0.5
+                params_all = ((epsilon, alpha, unrewarded_visual_exploration_rate), learning_during_testing)
 
         agent = BeliefHistoryTabularRL(env,history=0,beliefRL=False,
                                         alpha=alpha,epsilon=epsilon,seed=seed,
@@ -264,12 +277,7 @@ if __name__ == "__main__":
         #num_params_to_fit = 2 # for both basic and belief RL
         #num_params_to_fit = 3 # for both basic and belief RL
         num_params_to_fit = 4 # only for belief RL
-
-    # choose one of the two below, either fit only rewarded stimuli (+v, /+v, +o),
-    #  or both rewarded and unrewarded (internally rewarded) stimuli,
-    #fit_rewarded_stimuli_only = True
-    fit_rewarded_stimuli_only = False
-    
+        
     # choose whether ACC is inhibited or not
     #ACC_off = True
     ACC_off = False
@@ -279,11 +287,25 @@ if __name__ == "__main__":
     else:
         ACC_off_factor = 1.0 # uninhibited ACC
         ACC_str = 'control'
+
+    # choose one of the two below, either fit only rewarded stimuli (+v, /+v, +o),
+    #  or both rewarded and unrewarded (internally rewarded) stimuli,
+    #fit_rewarded_stimuli_only = True
+    fit_rewarded_stimuli_only = False
+
+    # whether to use parameters obtained by fitting to:
+    #  old (has ACC-on/control and ACC-off/exp) data,
+    #  or new (behaviour+neural w/ only ACC-on) data.
+    new_data = True
+    #new_data = False
+    if new_data and ACC_off:
+        print('New (behaviour+neural) data does not have data for ACC off i.e. exp condition.')
+        sys.exit(1)
     
     for seed in seeds:
         # Instantiate the env and the agent
         env, agent, steps, params_all = get_env_agent(agent_type, ACC_off_factor, seed=seed,
-                                                     num_params_to_fit=num_params_to_fit)
+                                                     num_params_to_fit=num_params_to_fit, new_data=new_data)
         
         agent.reset()
         
@@ -295,7 +317,8 @@ if __name__ == "__main__":
 
         print('Q-values dict {state: context x action} = ',agent.Q_array)
 
-        savefilenamebase = 'simulation_data/simdata_'+agent_type+'_numparams'+str(num_params_to_fit)+'_ACC'+ACC_str
+        savefilenamebase = 'simulation_data/simdata_'+agent_type+'_numparams'+str(num_params_to_fit)+\
+                            '_ACC'+ACC_str+('_newdata' if new_data else '')
         savefilename = savefilenamebase + '_seed'+str(seed)+'.mat'
         print('Saving to',savefilename)
         # params_all is a 'ragged' tuple with different dtypes (including NoneType),
@@ -316,5 +339,5 @@ if __name__ == "__main__":
                             'context_record':context_record,
                             'mismatch_error_record':mismatch_error_record})    
 
-    #load_plot_expsimdata(savefilename)
+    load_plot_expsimdata(savefilenamebase,seeds,new_data)
     load_plot_simdata(savefilenamebase,seeds)

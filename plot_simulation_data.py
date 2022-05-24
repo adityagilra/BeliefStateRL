@@ -133,8 +133,7 @@ def load_simdata(filename):
             context_record,
             mismatch_error_record)
 
-
-def load_plot_simdata(filenamebase, seeds):
+def load_simdata_seeds(filenamebase,seeds):
 
     print('Loading simulation data across seeds =',seeds)
 
@@ -168,12 +167,31 @@ def load_plot_simdata(filenamebase, seeds):
         action_vector_exp_compare = np.concatenate((action_vector_exp_compare,action_vector_exp_compare_seed[:exp_step]),axis=0)
         context_record = np.concatenate((context_record,context_record_seed[:exp_step]),axis=0)
         mismatch_error_record = np.concatenate((mismatch_error_record,mismatch_error_record_seed[:exp_step]),axis=0)
+
+    return (exp_steps, ACC_str, agent_type,
+            fit_rewarded_stimuli_only,
+            num_params_to_fit,
+            block_vector_exp_compare,
+            reward_vector_exp_compare,
+            stimulus_vector_exp_compare,
+            action_vector_exp_compare,
+            context_record,
+            mismatch_error_record)
+
+def load_plot_simdata(filenamebase, seeds):
+
+    exp_steps, ACC_str, agent_type,\
+        fit_rewarded_stimuli_only,\
+        num_params_to_fit,\
+        block_vector_exp_compare,\
+        reward_vector_exp_compare,\
+        stimulus_vector_exp_compare,\
+        action_vector_exp_compare,\
+        context_record,\
+        mismatch_error_record = load_simdata_seeds(filenamebase,seeds)
         
     print('Processing simulation data')
     
-    # length of valid elements in the data arrays
-    exp_step = block_vector_exp_compare.shape[0]
-
     # obtain the mean reward and action given stimulus around O2V transition
     # no need to pass above variables as they are not modified, only analysed
     average_reward_around_o2v_transition, \
@@ -226,8 +244,7 @@ def load_plot_simdata(filenamebase, seeds):
         #print( """(belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate,
         #                        exploration_add_factor_for_context_uncertainty, alpha),
         #                 learning_during_testing, context_sampling )""", params_all )
-        #plot_mismatch_vs_perfectswitch(mismatch_by_perfectswitch_o2v, mismatch_by_perfectswitch_v2o)
-        pass
+        plot_mismatch_vs_perfectswitch(mismatch_by_perfectswitch_o2v, mismatch_by_perfectswitch_v2o)
 
     plt.show()
         
@@ -288,9 +305,12 @@ if __name__ == "__main__":
     #seeds = [1]
 
     ## choose one or more of the below:
-    load_plot_simdata('simulation_data/simdata_belief_numparams4_ACCcontrol',seeds) # BeliefRL, ACC on/normal
-    #load_plot_simdata('simulation_data/simdata_belief_numparams4_ACCexp',seeds) # BeliefRL, ACC off
-    #load_plot_simdata('simulation_data/simdata_basic_numparams2_ACCcontrol.mat',seeds) # BasicRL, ACC on
+    load_plot_simdata('simulation_data/simdata_belief_numparams4_ACCcontrol_newdata',seeds) # BeliefRL, ACC on/normal -- new data
+
+    #load_plot_simdata('simulation_data/simdata_belief_numparams4_ACCcontrol',seeds) # BeliefRL, ACC on/normal -- old data, not used for Fig 1
+    #load_plot_simdata('simulation_data/simdata_belief_numparams4_ACCexp',seeds) # BeliefRL, ACC off -- old data, used for time to switch
+    #load_plot_simdata('simulation_data/simdata_basic_numparams2_ACCcontrol.mat',seeds) # BasicRL, ACC on -- old data, not used for Fig 1
+
     ## compare switching times between blocks for control (ACC on/normal) vs exp (ACC off)
     #load_plot_ACConvsoff('simulation_data/simdata_belief_numparams4_ACCcontrol_seed1.mat',
     #                    'simulation_data/simdata_belief_numparams4_ACCexp_seed1.mat')

@@ -50,6 +50,13 @@ if __name__ == "__main__":
         ACC_off_factor = 1.0 # uninhibited ACC
         ACC_str = 'control'
 
+    # whether to fit to old (has ACC-on/control and ACC-off/exp) data or new (behaviour+neural w/ only ACC-on) data.
+    new_data = True
+    #new_data = False
+    if new_data and ACC_off:
+        print('New (behaviour+neural) data does not have data for ACC off i.e. exp condition.')
+        sys.exit(1)
+
     # choose one of the two below, either fit a session only, or all mice, all sessions.
     #fit_a_session = True
     fit_a_session = False
@@ -70,7 +77,8 @@ if __name__ == "__main__":
         mean_probability_action_given_stimulus_o2v, \
         transitions_actionscount_to_stimulus_o2v = \
             get_exp_reward_around_transition(trans='O2V',ACC=ACC_str,
-                                            mice_list=mice_list,sessions_list=sessions_list)
+                                            mice_list=mice_list,sessions_list=sessions_list,
+                                            new_data=new_data)
     number_of_mice, across_mice_average_reward_v2o, \
         mice_average_reward_around_transtion_v2o, \
         mice_actionscount_to_stimulus_v2o, \
@@ -79,7 +87,8 @@ if __name__ == "__main__":
         mean_probability_action_given_stimulus_v2o, \
         transitions_actionscount_to_stimulus_v2o = \
             get_exp_reward_around_transition(trans='V2O',ACC=ACC_str,
-                                            mice_list=mice_list,sessions_list=sessions_list)
+                                            mice_list=mice_list,sessions_list=sessions_list,
+                                            new_data=new_data)
     print("finished reading experimental data.")
 
     # replace nan-s by -0.5 in mouse behaviour (done for agent in fitting)
