@@ -15,7 +15,7 @@ if __name__ == "__main__":
     
     if agent_type == 'basic':
         # choose one of the below
-        num_params_to_fit = 2 
+        num_params_to_fit = 2
         #num_params_to_fit = 3 
     else:
         # choose one of the below
@@ -41,8 +41,8 @@ if __name__ == "__main__":
         seeds = (1,2,3,4,5)
     
     # choose whether ACC is inhibited or not
-    ACC_off = True
-    #ACC_off = False
+    #ACC_off = True
+    ACC_off = False
     if ACC_off:
         ACC_off_factor = 0.5 # inhibited ACC
         ACC_str = 'exp'

@@ -44,9 +44,17 @@ def plot_sim_prob_actions_given_stimuli(probability_action_given_stimulus,
     p_act_compact[1,rangeV] = probability_action_given_stimulus_bytrials[1,rangeV,1] # visual block, visual stim 1 , lick 1
     p_act_compact[0,rangeO] = probability_action_given_stimulus_bytrials[2,rangeO,1] # olfactory block, visual stim 2 , lick 1
     p_act_compact[1,rangeO] = probability_action_given_stimulus_bytrials[3,rangeO,1] # olfactory block, visual stim 3 , lick 1
-    for stimulus_index in range(2):
-        plot_without_nans(axpaper, xvec, p_act_compact\
-                                    [stimulus_index,:], marker='.',
+    ## no longer plotting visual plots in visual and olfactory blocks as one line
+    #for stimulus_index in range(2):
+    #    plot_without_nans(axpaper, xvec, p_act_compact\
+    #                                [stimulus_index,:], marker='.',
+    #                                color=colors[stimulus_index],
+    #                                linestyle='solid',
+    #                                label=labels[stimulus_index])
+    # plotting the visual plots in the 2 blocks as separate lines
+    for stimulus_index in range(4):
+        plot_without_nans(axpaper, xvec, probability_action_given_stimulus_bytrials\
+                                    [stimulus_index,:,1], marker='.',
                                     color=colors[stimulus_index],
                                     linestyle='solid',
                                     label=labels[stimulus_index])
@@ -126,18 +134,45 @@ def load_simdata(filename):
             mismatch_error_record)
 
 
-def load_plot_simdata(filename):
+def load_plot_simdata(filenamebase, seeds):
 
-    (steps, exp_step, fit_rewarded_stimuli_only,
-    agent_type, num_params_to_fit, ACC_str, seed,
-    block_vector_exp_compare,
-    reward_vector_exp_compare,
-    stimulus_vector_exp_compare,
-    action_vector_exp_compare,
-    context_record,
-    mismatch_error_record) = load_simdata(filename)
+    print('Loading simulation data across seeds =',seeds)
+
+    exp_steps = []
+    block_vector_exp_compare = []
+    reward_vector_exp_compare = []
+    stimulus_vector_exp_compare = []
+    action_vector_exp_compare = []
+    # blank numpy arrays with size of context_record, etc. to allow concatenation
+    context_record = np.empty((0,2))
+    mismatch_error_record = np.empty((0,2))
+
+    exp_step_count = 0
+    for seed in seeds:
+        filename = filenamebase + '_seed' + str(seed) + '.mat'
+
+        (steps, exp_step, fit_rewarded_stimuli_only,
+        agent_type, num_params_to_fit, ACC_str, seed,
+        block_vector_exp_compare_seed,
+        reward_vector_exp_compare_seed,
+        stimulus_vector_exp_compare_seed,
+        action_vector_exp_compare_seed,
+        context_record_seed,
+        mismatch_error_record_seed) = load_simdata(filename)
+        
+        exp_step_count += exp_step
+        exp_steps.append(exp_step_count)
+        block_vector_exp_compare = np.concatenate((block_vector_exp_compare,block_vector_exp_compare_seed[:exp_step]),axis=0)
+        reward_vector_exp_compare = np.concatenate((reward_vector_exp_compare,reward_vector_exp_compare_seed[:exp_step]),axis=0)
+        stimulus_vector_exp_compare = np.concatenate((stimulus_vector_exp_compare,stimulus_vector_exp_compare_seed[:exp_step]),axis=0)
+        action_vector_exp_compare = np.concatenate((action_vector_exp_compare,action_vector_exp_compare_seed[:exp_step]),axis=0)
+        context_record = np.concatenate((context_record,context_record_seed[:exp_step]),axis=0)
+        mismatch_error_record = np.concatenate((mismatch_error_record,mismatch_error_record_seed[:exp_step]),axis=0)
+        
+    print('Processing simulation data')
     
-    print('Processing and plotting simulation data')
+    # length of valid elements in the data arrays
+    exp_step = block_vector_exp_compare.shape[0]
 
     # obtain the mean reward and action given stimulus around O2V transition
     # no need to pass above variables as they are not modified, only analysed
@@ -147,17 +182,13 @@ def load_plot_simdata(filename):
         probability_action_given_stimulus_o2v, \
         probability_action_given_stimulus_bytrials_o2v, \
         context_o2v, mismatch_error_o2v, mismatch_by_perfectswitch_o2v = \
-            process_transitions(exp_step, block_vector_exp_compare,
+            process_transitions(exp_steps, block_vector_exp_compare,
                                 reward_vector_exp_compare,
                                 stimulus_vector_exp_compare,
                                 action_vector_exp_compare,
                                 context_record, mismatch_error_record,
                                 O2V = True, half_window=half_window)
 
-    plot_sim_prob_actions_given_stimuli(probability_action_given_stimulus_o2v,
-                                    probability_action_given_stimulus_bytrials_o2v,
-                                    context_o2v, mismatch_error_o2v,
-                                    agent_type=agent_type)
 
     # obtain the mean reward and action given stimulus around V2O transition
     # no need to pass above variables as they are not modified, only analysed
@@ -167,12 +198,19 @@ def load_plot_simdata(filename):
         probability_action_given_stimulus_v2o, \
         probability_action_given_stimulus_bytrials_v2o, \
         context_v2o, mismatch_error_v2o, mismatch_by_perfectswitch_v2o = \
-            process_transitions(exp_step, block_vector_exp_compare,
+            process_transitions(exp_steps, block_vector_exp_compare,
                                 reward_vector_exp_compare, 
                                 stimulus_vector_exp_compare,
                                 action_vector_exp_compare,
                                 context_record, mismatch_error_record,
                                 O2V = False, half_window=half_window)
+
+    print('Plotting simulation data')
+
+    plot_sim_prob_actions_given_stimuli(probability_action_given_stimulus_o2v,
+                                    probability_action_given_stimulus_bytrials_o2v,
+                                    context_o2v, mismatch_error_o2v,
+                                    agent_type=agent_type)
 
     plot_sim_prob_actions_given_stimuli(probability_action_given_stimulus_v2o,
                                     probability_action_given_stimulus_bytrials_v2o,
@@ -188,9 +226,11 @@ def load_plot_simdata(filename):
         #print( """(belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate,
         #                        exploration_add_factor_for_context_uncertainty, alpha),
         #                 learning_during_testing, context_sampling )""", params_all )
-        plot_mismatch_vs_perfectswitch(mismatch_by_perfectswitch_o2v, mismatch_by_perfectswitch_v2o)
+        #plot_mismatch_vs_perfectswitch(mismatch_by_perfectswitch_o2v, mismatch_by_perfectswitch_v2o)
+        pass
 
     plt.show()
+        
 
 def load_plot_ACConvsoff(filenameACCon, filenameACCoff):
 
@@ -242,10 +282,15 @@ def load_plot_ACConvsoff(filenameACCon, filenameACCoff):
     plt.show()
         
 if __name__ == "__main__":
+
+    # chooses one the below to average sim data over seeds
+    seeds = [1,2,3,4,5]
+    #seeds = [1]
+
     ## choose one or more of the below:
-    load_plot_simdata('simulation_data/simdata_belief_numparams4_ACCcontrol_seed1.mat') # BeliefRL, ACC on/normal
-    #load_plot_simdata('simulation_data/simdata_belief_numparams4_ACCexp_seed1.mat') # BeliefRL, ACC off
-    #load_plot_simdata('simulation_data/simdata_basic_numparams2_ACCcontrol_seed1.mat') # BasicRL, ACC on
+    load_plot_simdata('simulation_data/simdata_belief_numparams4_ACCcontrol',seeds) # BeliefRL, ACC on/normal
+    #load_plot_simdata('simulation_data/simdata_belief_numparams4_ACCexp',seeds) # BeliefRL, ACC off
+    #load_plot_simdata('simulation_data/simdata_basic_numparams2_ACCcontrol.mat',seeds) # BasicRL, ACC on
     ## compare switching times between blocks for control (ACC on/normal) vs exp (ACC off)
     #load_plot_ACConvsoff('simulation_data/simdata_belief_numparams4_ACCcontrol_seed1.mat',
     #                    'simulation_data/simdata_belief_numparams4_ACCexp_seed1.mat')

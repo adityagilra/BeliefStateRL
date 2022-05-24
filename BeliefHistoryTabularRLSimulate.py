@@ -17,7 +17,8 @@ from plot_simulation_data import load_plot_simdata
 from plot_exp_sim_data import load_plot_expsimdata
 
 # reproducible random number generation -- env and agent use independent RNGs with same seed currently
-seed = 1
+# set later in __main__
+#seed = 1
 
 def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_fit = 4):
     # use one of these environments,
@@ -246,6 +247,10 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_
 
 if __name__ == "__main__":
 
+    # chooses one the below to repeat sims over seeds
+    seeds = [1,2,3,4,5]
+    #seeds = [1]
+
     ############## choose / uncomment one of the agents below! #################
     agent_type='belief'
     #agent_type='basic'
@@ -275,39 +280,41 @@ if __name__ == "__main__":
         ACC_off_factor = 1.0 # uninhibited ACC
         ACC_str = 'control'
     
-    # Instantiate the env and the agent
-    env, agent, steps, params_all = get_env_agent(agent_type, ACC_off_factor, seed=seed,
-                                                 num_params_to_fit=num_params_to_fit)
-    
-    agent.reset()
-    
-    # train the RL agent on the task
-    exp_step, block_vector_exp_compare, \
-        reward_vector_exp_compare, stimulus_vector_exp_compare, \
-            action_vector_exp_compare, context_record, mismatch_error_record = \
-                agent.train(steps)
+    for seed in seeds:
+        # Instantiate the env and the agent
+        env, agent, steps, params_all = get_env_agent(agent_type, ACC_off_factor, seed=seed,
+                                                     num_params_to_fit=num_params_to_fit)
+        
+        agent.reset()
+        
+        # train the RL agent on the task
+        exp_step, block_vector_exp_compare, \
+            reward_vector_exp_compare, stimulus_vector_exp_compare, \
+                action_vector_exp_compare, context_record, mismatch_error_record = \
+                    agent.train(steps)
 
-    print('Q-values dict {state: context x action} = ',agent.Q_array)
+        print('Q-values dict {state: context x action} = ',agent.Q_array)
 
-    savefilename = 'simulation_data/simdata_'+agent_type+'_numparams'+str(num_params_to_fit)+'_ACC'+ACC_str+'_seed'+str(seed)+'.mat'
-    print('Saving to',savefilename)
-    # params_all is a 'ragged' tuple with different dtypes (including NoneType),
-    #  not saving it as it cannot be converted to an array to save into a .mat file
-    scipyio.savemat(savefilename,
-                        {'steps':steps,
-                        #'params_all':params_all,
-                        'exp_step':exp_step,
-                        'fit_rewarded_stimuli_only':fit_rewarded_stimuli_only,
-                        'agent_type':agent_type,
-                        'num_params_to_fit':num_params_to_fit,
-                        'ACC_str':ACC_str,
-                        'seed':seed,
-                        'block_vector_exp_compare':block_vector_exp_compare,
-                        'reward_vector_exp_compare':reward_vector_exp_compare,
-                        'stimulus_vector_exp_compare':stimulus_vector_exp_compare,
-                        'action_vector_exp_compare':action_vector_exp_compare,
-                        'context_record':context_record,
-                        'mismatch_error_record':mismatch_error_record})    
+        savefilenamebase = 'simulation_data/simdata_'+agent_type+'_numparams'+str(num_params_to_fit)+'_ACC'+ACC_str
+        savefilename = savefilenamebase + '_seed'+str(seed)+'.mat'
+        print('Saving to',savefilename)
+        # params_all is a 'ragged' tuple with different dtypes (including NoneType),
+        #  not saving it as it cannot be converted to an array to save into a .mat file
+        scipyio.savemat(savefilename,
+                            {'steps':steps,
+                            #'params_all':params_all,
+                            'exp_step':exp_step,
+                            'fit_rewarded_stimuli_only':fit_rewarded_stimuli_only,
+                            'agent_type':agent_type,
+                            'num_params_to_fit':num_params_to_fit,
+                            'ACC_str':ACC_str,
+                            'seed':seed,
+                            'block_vector_exp_compare':block_vector_exp_compare,
+                            'reward_vector_exp_compare':reward_vector_exp_compare,
+                            'stimulus_vector_exp_compare':stimulus_vector_exp_compare,
+                            'action_vector_exp_compare':action_vector_exp_compare,
+                            'context_record':context_record,
+                            'mismatch_error_record':mismatch_error_record})    
 
-    load_plot_expsimdata(savefilename)
-    load_plot_simdata(savefilename)
+    #load_plot_expsimdata(savefilename)
+    load_plot_simdata(savefilenamebase,seeds)

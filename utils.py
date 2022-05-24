@@ -1,6 +1,6 @@
 import numpy as np
 
-def process_transitions(exp_step, block_vector_exp_compare,
+def process_transitions(exp_steps, block_vector_exp_compare,
                         reward_vector_exp_compare, 
                         stimulus_vector_exp_compare,
                         action_vector_exp_compare,
@@ -8,15 +8,24 @@ def process_transitions(exp_step, block_vector_exp_compare,
                         O2V=True, half_window=30):
     # exp_step, at end of time loop above, equals end index saved in _exp_compare vectors
     # clip vector at exp_step, to avoid detecting a last spurious transtion in block_vector_exp_compare
+    # when called from plotting across seeds, exp_steps is a list, need to clip at each index in exp_steps
+    # if exp_steps is not a list, e.g. when called from fit,
+    #  then convert it to one (actually a np.array now), while preserving shape if already a list:
+    exp_steps = np.array([exp_steps]).flatten()
 
     # processing after agent simulation has ended
-    # calculate mean reward and mean action given stimulus, around transitions
-    transitions = \
-        np.where(np.diff(block_vector_exp_compare[:exp_step])==(-1 if O2V else 1))[0] + 1
+    # find transitions, ignoring spurious ones at exp_steps
+    transitions_list = []
+    exp_steps_done = 0
+    for exp_step in exp_steps:
+        transitions_list.append(
+            np.where(np.diff(block_vector_exp_compare[exp_steps_done:exp_step])==(-1 if O2V else 1))[0] + exp_steps_done+1 )
+        exp_steps_done = exp_step
     # note that block number changes on the first time step of a new trial,
     # debug print
     #print(('O2V' if O2V else 'V2O')+" transition at steps ",transitions)
-    print('Number of '+('O2V' if O2V else 'V2O')+' transitions =', len(transitions))
+    print('Number of '+('O2V' if O2V else 'V2O')+' transitions =',
+            sum([len(transitions) for transitions in transitions_list]))
     
     average_reward_around_transition = np.zeros(half_window*2+1)
     actionscount_to_stimulus = np.zeros((6,half_window*2+1,2)) # 6 stimuli, 2 actions
@@ -26,82 +35,90 @@ def process_transitions(exp_step, block_vector_exp_compare,
     mismatch_error = np.zeros((half_window*2+1,len(context_record[0])))
     mismatch_by_perfectswitch = [[],[]]
     num_transitions_averaged = 0
-    for transition in transitions:
-        # take edge effects into account when taking a window around transition
-        # i.e. don't go beyond the start and end of saved data if transition is close to an edge
-        window_min = max((0,transition-half_window))
-        # exp_step, at end of time loop above, equals end index saved in _exp_compare vectors
-        window_max = min((transition+half_window+1,exp_step))
-        window_start = window_min-(transition-half_window)
-        window_end = window_max-(transition-half_window)
-        average_reward_around_transition[window_start:window_end] \
-                += reward_vector_exp_compare[window_min:window_max]
-
-        # debug print
-        #print(('O2V' if O2V else 'V2O'), transition,
-        #        stimulus_vector_exp_compare[transition-5:transition+5],
-        #        action_vector_exp_compare[transition-5:transition+5])
-
-        ######### actions given stimuli around transition by time steps
-        for stimulus_number in range(1,7):
-            # bitwise and takes precedence over equality testing, so need brackets
-            # stimuli are saved in experiment as 1 to 6
-            # since not all time steps will have a particular stimulus,
-            #  I encode lick as 1, no lick (with stimulus) as -1, and no stimulus as 0 
-            actionscount_to_stimulus[stimulus_number-1,window_start:window_end,0] += \
-                   (stimulus_vector_exp_compare[window_min:window_max]==stimulus_number) \
-                            & (action_vector_exp_compare[window_min:window_max]==0)
-            actionscount_to_stimulus[stimulus_number-1,window_start:window_end,1] += \
-                   (stimulus_vector_exp_compare[window_min:window_max]==stimulus_number) \
-                            & (action_vector_exp_compare[window_min:window_max]==1)
+    exp_step_done = 0
+    for idx,transitions in enumerate(transitions_list):
+        exp_step = exp_steps[idx]
+        for transition in transitions:
+            # take edge effects into account when taking a window around transition
+            # exp_step_done and exp_step contain the start and end of saved data for each seed
+            # i.e. don't go beyond the start and end of saved data if transition is close to an edge
+            window_min = max((exp_step_done,transition-half_window))
+            # exp_step, at end of time loop above, equals end index saved in _exp_compare vectors
+            window_max = min((transition+half_window+1,exp_step))
+            window_start = window_min-(transition-half_window)
+            window_end = window_max-(transition-half_window)
+            average_reward_around_transition[window_start:window_end] \
+                    += reward_vector_exp_compare[window_min:window_max]
 
             # debug print
-            #print(stimulus_number,
-            #        actionscount_to_stimulus[stimulus_number-1,half_window-5:half_window+5,0],
-            #        actionscount_to_stimulus[stimulus_number-1,half_window-5:half_window+5,1])
+            #print(('O2V' if O2V else 'V2O'), transition,
+            #        stimulus_vector_exp_compare[transition-5:transition+5],
+            #        action_vector_exp_compare[transition-5:transition+5])
+
+            ######### actions given stimuli around transition by time steps
+            for stimulus_number in range(1,7):
+                # bitwise and takes precedence over equality testing, so need brackets
+                # stimuli are saved in experiment as 1 to 6
+                # since not all time steps will have a particular stimulus,
+                #  I encode lick as 1, no lick (with stimulus) as -1, and no stimulus as 0 
+                actionscount_to_stimulus[stimulus_number-1,window_start:window_end,0] += \
+                       (stimulus_vector_exp_compare[window_min:window_max]==stimulus_number) \
+                                & (action_vector_exp_compare[window_min:window_max]==0)
+                actionscount_to_stimulus[stimulus_number-1,window_start:window_end,1] += \
+                       (stimulus_vector_exp_compare[window_min:window_max]==stimulus_number) \
+                                & (action_vector_exp_compare[window_min:window_max]==1)
+
+                # debug print
+                #print(stimulus_number,
+                #        actionscount_to_stimulus[stimulus_number-1,half_window-5:half_window+5,0],
+                #        actionscount_to_stimulus[stimulus_number-1,half_window-5:half_window+5,1])
             
-        ######### actions given stimuli around transition by trials
-        # for stimuli 1,2 (visual block) counting by steps and by trials is the same
-        actionscount_to_stimulus_bytrials[ [0,1], :, :] = actionscount_to_stimulus[ [0,1], :, :]
-        # for stimuli 3-6 (olfactory block) need to collapse steps into trials
-        trialnum = 0
-        # go from transition towards olfactory steps / trials, need to align transitions
-        if O2V: stepnums = range(transition,window_min,-1)
-        else: stepnums = range(transition,window_max)
-        for stepnum in stepnums:
-            stimulus = stimulus_vector_exp_compare[stepnum]
-            if stimulus in [5,6]: # olfactory stimulus
-                if O2V: windownum = half_window-trialnum
-                else: windownum = half_window+trialnum
-                actionscount_to_stimulus_bytrials[ int(stimulus-1), windownum, \
-                                                    int(action_vector_exp_compare[stepnum]) ] += 1
-                # was there a visual stimulus of the olfactory block before this?
-                if stepnum>window_min: # can't go out of bounds
-                    prev_stimulus = stimulus_vector_exp_compare[stepnum-1]
-                    if prev_stimulus in [3,4]:
-                        actionscount_to_stimulus_bytrials[ int(prev_stimulus-1), windownum, \
-                                                            int(action_vector_exp_compare[stepnum-1]) ] += 1
-                trialnum += 1
+            ######### actions given stimuli around transition by trials
+            # for stimuli 1,2 (visual block) counting by steps and by trials is the same
+            actionscount_to_stimulus_bytrials[ [0,1], :, :] = actionscount_to_stimulus[ [0,1], :, :]
+            # for stimuli 3-6 (olfactory block) need to collapse steps into trials
+            trialnum = 0
+            # go from transition towards olfactory steps / trials, need to align transitions
+            if O2V: stepnums = range(transition,window_min,-1)
+            else: stepnums = range(transition,window_max)
+            for stepnum in stepnums:
+                stimulus = stimulus_vector_exp_compare[stepnum]
+                if stimulus in [5,6]: # olfactory stimulus
+                    if O2V: windownum = half_window-trialnum
+                    else: windownum = half_window+trialnum
+                    actionscount_to_stimulus_bytrials[ int(stimulus-1), windownum, \
+                                                        int(action_vector_exp_compare[stepnum]) ] += 1
+                    # was there a visual stimulus of the olfactory block before this?
+                    if stepnum>window_min: # can't go out of bounds
+                        prev_stimulus = stimulus_vector_exp_compare[stepnum-1]
+                        if prev_stimulus in [3,4]:
+                            actionscount_to_stimulus_bytrials[ int(prev_stimulus-1), windownum, \
+                                                                int(action_vector_exp_compare[stepnum-1]) ] += 1
+                    trialnum += 1
 
-        context[window_start:window_end,:] += context_record[window_min:window_max,:]
+            context[window_start:window_end,:] += context_record[window_min:window_max,:]
 
-        if O2V:
-            second_trial_idx = transition + 1
-            correct_action = 1
-        else:
-            second_trial_idx = transition + 2
-            correct_action = 0
-        # error in both contexts is taken into account -- np.abs() to neglect direction information
-        # note that context prediction error is always a factor times (0,0) or (-1,1) or (1,-1)
-        if action_vector_exp_compare[second_trial_idx] == correct_action:
-            mismatch_by_perfectswitch[1].append( np.sum(np.abs(mismatch_error_record[second_trial_idx-1,:])) )
-        else:
-            mismatch_by_perfectswitch[0].append( np.sum(np.abs(mismatch_error_record[second_trial_idx-1,:])) )
+            if O2V:
+                second_trial_idx = transition + 1
+                correct_action = 1
+            else:
+                second_trial_idx = transition + 2
+                correct_action = 0
+            # error in both contexts is taken into account -- np.abs() to neglect direction information
+            # note that context prediction error is always a factor times (0,0) or (-1,1) or (1,-1)
+            if action_vector_exp_compare[second_trial_idx] == correct_action:
+                mismatch_by_perfectswitch[1].append( np.sum(np.abs(mismatch_error_record[second_trial_idx-1,:])) )
+            else:
+                mismatch_by_perfectswitch[0].append( np.sum(np.abs(mismatch_error_record[second_trial_idx-1,:])) )
 
-        mismatch_error[window_start:window_end,:] += mismatch_error_record[window_min:window_max,:]
+            mismatch_error[window_start:window_end,:] += mismatch_error_record[window_min:window_max,:]
 
-        num_transitions_averaged += 1
+            num_transitions_averaged += 1
+            # transitions loop ends
 
+        exp_step_done = exp_step
+        # transitions_list loop ends
+        
     average_reward_around_transition /= num_transitions_averaged
 
     # normalize over the actions (last axis i.e. -1) to get probabilities

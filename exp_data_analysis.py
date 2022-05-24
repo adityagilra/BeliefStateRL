@@ -65,6 +65,8 @@ np.random.seed(1)
 #                                        struct_as_record=True)
 # Nick said that 50% olfactory performance after v2o switch was an "error with separating the first few trials following a switch"
 # so he has re-exported the data correctly now:
+# Using the new neural recordings + behaviour data below to fit 'ACC on' (control) behaviour,
+#  but still need this to fit and comare control (ACC on) vs exp (ACC off), as new dataset below doesn't have 'exp' field.
 mouse_behaviour_data = scipyio.loadmat(
                     "experiment_data/exported_behavioural_data_Control_vs_ACC_silencing_-30_+30_trials_secondbug_corrected.mat",
                                         struct_as_record=True)
@@ -91,9 +93,11 @@ mouse_correct_switch = mouse_neural_data['dF']['correctSwitch'][0,0][0]
 # Imaging data has two fields: 'expResponses' is the mismatch response amplitudes for each mismatch neuron, in the format mentioned earlier. 'correctSwitch' is what you asked for, it's a logical array with one value for each switch in the session. If 1 it means that the trials after that mismatch trial was correct
 
 # Behavioural data: rows = switches, columns = timepoints (so a 4 x 61 array is 4 switches with 61 timepoints, with timepoint 31 being the first stimulus after the switch)
+# This is used to fit 'control' behaviour, but doesn't have exp (ACC off) behavioiur.
 mouse_behaviour_for_neural_data = scipyio.loadmat(
                     "experiment_data/exported_behavioural_data_from_imaging_sessions.mat",
                                     struct_as_record=True)
+
 
 #==============================================================
 
@@ -402,6 +406,12 @@ if __name__ == "__main__":
     # choose control for ACC not inhibited, exp for ACC inhibited
     ACC = 'control'
     #ACC = 'exp'
+    
+    if ACC == 'control':
+        # override the data to newest one, for fitting behaviour in 'control' (ACC on) condition
+        #  'exp' (ACC off) behaviour has not been recorded in newest version,
+        #   so use older data i.e. do not override it..
+        mouse_behaviour_data = mouse_behaviour_for_neural_data
     
     number_of_mice, across_mice_average_reward, \
         mice_average_reward_around_transtion, \
