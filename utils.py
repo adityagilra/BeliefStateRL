@@ -102,6 +102,7 @@ def process_transitions(exp_steps, block_vector_exp_compare,
                 second_trial_idx = transition + 1
                 correct_action = 1
             else:
+                # first 3 trials after V2O transition always have rewarded visual then odor
                 second_trial_idx = transition + 2
                 correct_action = 0
             # error in both contexts is taken into account -- np.abs() to neglect direction information

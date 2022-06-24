@@ -82,25 +82,41 @@ def plot_mismatch_vs_perfectswitch(mismatch_by_perfectswitch_o2v, mismatch_by_pe
             len(mismatch_by_perfectswitch_o2v[0]),len(mismatch_by_perfectswitch_o2v[1]))
     print('Numbers of imperfect and perfect switches for V2O =',
             len(mismatch_by_perfectswitch_v2o[0]),len(mismatch_by_perfectswitch_v2o[1]))
-    ranksumstat, pvalue = scipy.stats.ranksums(mismatch_by_perfectswitch_o2v[0],mismatch_by_perfectswitch_o2v[1])
+    num_transitions = 70 # number of transitions in new behaviour+neural data
+    print('For significance testing, only taking',num_transitions,'transitions to compare with experiment.')
+    # Also the p-value becomes negligible, and overflows into a high value for say 3000 samples!
+    np.random.seed([1])
+    num_transitions_data = np.min((len(mismatch_by_perfectswitch_o2v[0]),len(mismatch_by_perfectswitch_v2o[0])))
+    idxs = np.random.permutation(np.array(range(num_transitions_data),dtype=int))[:num_transitions]
+    mismatch_by_perfectswitch_o2v_0 = np.array(mismatch_by_perfectswitch_o2v[0])[idxs]
+    mismatch_by_perfectswitch_o2v_1 = np.array(mismatch_by_perfectswitch_o2v[1])[idxs]
+    mismatch_by_perfectswitch_v2o_0 = np.array(mismatch_by_perfectswitch_v2o[0])[idxs]
+    mismatch_by_perfectswitch_v2o_1 = np.array(mismatch_by_perfectswitch_v2o[1])[idxs]
+    ranksumstat, pvalue = scipy.stats.ranksums(mismatch_by_perfectswitch_o2v_0,mismatch_by_perfectswitch_o2v_1)
     print('Wilcoxon rank sum: O2V ranksumstat, pvalue =', ranksumstat, pvalue)
-    ranksumstat, pvalue = scipy.stats.ranksums(mismatch_by_perfectswitch_v2o[0],mismatch_by_perfectswitch_v2o[1])
+    ranksumstat, pvalue = scipy.stats.ranksums(mismatch_by_perfectswitch_v2o_0,mismatch_by_perfectswitch_v2o_1)
     print('Wilcoxon rank sum: V2O ranksumstat, pvalue =', ranksumstat, pvalue)
-    res = scipy.stats.mannwhitneyu(mismatch_by_perfectswitch_o2v[0],mismatch_by_perfectswitch_o2v[1])
+    res = scipy.stats.mannwhitneyu(mismatch_by_perfectswitch_o2v_0,mismatch_by_perfectswitch_o2v_1)
     print('Mann Whitney U: O2V U statistic for imperfect switch, pvalue =', res.statistic, res.pvalue)
-    res = scipy.stats.mannwhitneyu(mismatch_by_perfectswitch_v2o[0],mismatch_by_perfectswitch_v2o[1])
+    res = scipy.stats.mannwhitneyu(mismatch_by_perfectswitch_v2o_0,mismatch_by_perfectswitch_v2o_1)
     print('Mann Whitney U: V2O U statistic for imperfect switch, pvalue =', res.statistic, res.pvalue)
+
     fig, ax = plt.subplots(1,2)
     #ax[0].bar( ['wrong switch','correct switch'],
     #            [np.mean(mismatch_by_perfectswitch_o2v[0]),np.mean(mismatch_by_perfectswitch_o2v[1])],
     #            yerr=[np.std(mismatch_by_perfectswitch_o2v[0]),np.std(mismatch_by_perfectswitch_o2v[1])] )
-    ax[0].boxplot( mismatch_by_perfectswitch_o2v )
+    # showfliers = False only suppresses plotting of outliers, to expand whiskers, set whis to (0,100)
+    result = ax[0].boxplot( (mismatch_by_perfectswitch_o2v_0,mismatch_by_perfectswitch_o2v_1), whis=(0,100) )#, showfliers=False )
+    # unsure how to find number of outliers. result['fliers'] is a list of two Line2D objects.
+    #print('Number of outliers in O2V imperfect & perfect =',len(result['fliers'][0]),len(result['fliers'][1]))
     ax[0].set_xticklabels(['imperfect switch','perfect switch'])
     ax[0].set_ylabel('block mismatch signal O2V')
     #ax[1].bar( [' switch','correct switch'],
     #            [np.mean(mismatch_by_perfectswitch_v2o[0]),np.mean(mismatch_by_perfectswitch_v2o[1])],
     #            yerr=[np.std(mismatch_by_perfectswitch_v2o[0]),np.std(mismatch_by_perfectswitch_v2o[1])] )
-    ax[1].boxplot( mismatch_by_perfectswitch_v2o )
+    # showfliers = False only suppresses plotting of outliers, to expand whiskers, set whis to (0,100)
+    result = ax[1].boxplot( (mismatch_by_perfectswitch_v2o_0,mismatch_by_perfectswitch_v2o_1), whis=(0,100) )#, showfliers=False )
+    #print('Number of outliers in V2O imperfect & perfect =',len(result['fliers'][0]),len(result['fliers'][1]))
     ax[1].set_xticklabels(['imperfect switch','perfect switch'])
     ax[1].set_ylabel('block mismatch signal V2O')
     fig.tight_layout()
@@ -143,8 +159,12 @@ def load_simdata_seeds(filenamebase,seeds):
     stimulus_vector_exp_compare = []
     action_vector_exp_compare = []
     # blank numpy arrays with size of context_record, etc. to allow concatenation
-    context_record = np.empty((0,2))
-    mismatch_error_record = np.empty((0,2))
+    if 'belief' in filenamebase: # a bit of hard-coding hack to read in belief vs basicRL data
+        n_contexts = 2
+    else:
+        n_contexts = 1
+    context_record = np.empty((0,n_contexts))
+    mismatch_error_record = np.empty((0,n_contexts))
 
     exp_step_count = 0
     for seed in seeds:
@@ -309,7 +329,7 @@ if __name__ == "__main__":
 
     #load_plot_simdata('simulation_data/simdata_belief_numparams4_ACCcontrol',seeds) # BeliefRL, ACC on/normal -- old data, not used for Fig 1
     #load_plot_simdata('simulation_data/simdata_belief_numparams4_ACCexp',seeds) # BeliefRL, ACC off -- old data, used for time to switch
-    #load_plot_simdata('simulation_data/simdata_basic_numparams2_ACCcontrol.mat',seeds) # BasicRL, ACC on -- old data, not used for Fig 1
+    #load_plot_simdata('simulation_data/simdata_basic_numparams2_ACCcontrol_newdata',seeds) # BasicRL, ACC on -- old data, not used for Fig 1
 
     ## compare switching times between blocks for control (ACC on/normal) vs exp (ACC off)
     #load_plot_ACConvsoff('simulation_data/simdata_belief_numparams4_ACCcontrol_seed1.mat',

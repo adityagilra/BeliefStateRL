@@ -265,11 +265,11 @@ if __name__ == "__main__":
     # whether to load:
     #  old (has ACC-on/control and ACC-off/exp) data,
     #  or new (behaviour+neural w/ only ACC-on) data.
-    #new_data = True
-    new_data = False
+    new_data = True
+    #new_data = False
 
     ## choose one of the below:
-    load_plot_expsimdata('simulation_data/simdata_belief_numparams4_ACCcontrol',seeds,new_data) # BeliefRL, ACC on/normal
+    #load_plot_expsimdata('simulation_data/simdata_belief_numparams4_ACCcontrol',seeds,new_data) # BeliefRL, ACC on/normal
     #load_plot_expsimdata('simulation_data/simdata_belief_numparams4_ACCexp',seeds,new_data) # BeliefRL, ACC off
-    #load_plot_expsimdata('simulation_data/simdata_basic_numparams2_ACCcontrol',seeds,new_data) # BasicRL, ACC on
+    load_plot_expsimdata('simulation_data/simdata_basic_numparams2_ACCcontrol',seeds,new_data) # BasicRL, ACC on
 

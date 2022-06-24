@@ -349,9 +349,9 @@ def analyse_neural_mismatch():
     behaviour_data = mouse_behaviour_for_neural_data['expData'][ACC][0,0]['mouse'+trans][0,0]
     window = behaviour_data[0,0][0,0]['stimulus'].shape[1]
     #number_of_mice = len(mouse_behaviour_for_neural_data['expData'][ACC][0,0]['mouse'+trans][0,0][0])
-    # number of mice (or is it number of sessions?) is 13 in the behaviour data,
-    #  and number of sessions is also 13 in the neural data,
-    # but number of transitions is much less in the neural data
+    # number of mice (or is it number of sessions?) is 13 in the behaviour only data,
+    #  and number of sessions is also 13 in the new neural+behaviour data,
+    # but number of transitions is much less in the new data
     
     number_of_sessions = len(mouse_neural_mismatch)
     print('num sessions =',number_of_sessions)
@@ -362,7 +362,8 @@ def analyse_neural_mismatch():
     mismatches_flat = [[],[]]
     mismatch_difference = [[],[]]
     valid_sessions = []
-
+    num_transitions = 0
+    
     for session_idx in range(number_of_sessions):
         print('session num: ',session_idx)
         session_data = mouse_neural_mismatch[session_idx]
@@ -374,6 +375,7 @@ def analyse_neural_mismatch():
         transition_corrects = mouse_correct_switch[session_idx]
 
         if len(session_data[0])>0: # some sessions have no mismatch neurons
+            num_transitions += len(session_data)
             print('num transitions =',len(session_data),', num mismatch neurons =', len(session_data[0]))
             correct_transition_idxs = (mouse_correct_switch[session_idx][0]==1)
             print('correct transition idxs =',correct_transition_idxs)
@@ -406,6 +408,7 @@ def analyse_neural_mismatch():
                 valid_sessions.append(session_idx)
         print()
 
+    print('Number of O2V transitions in new data =',num_transitions)
     return mismatches, mismatches_flat, mismatch_difference, valid_sessions
 
 if __name__ == "__main__":

@@ -20,8 +20,8 @@ if __name__ == "__main__":
     else:
         # choose one of the below
         #num_params_to_fit = 2 
-        #num_params_to_fit = 3 
-        num_params_to_fit = 4 # only for belief RL
+        num_params_to_fit = 3 
+        #num_params_to_fit = 4 # only for belief RL
 
     # choose one of the two below, either fit only rewarded stimuli (+v, /+v, +o),
     #  or both rewarded and unrewarded (internally rewarded) stimuli,
