@@ -11,7 +11,8 @@ import scipy.io as scipyio
 import scipy.stats
 import sys
 
-from exp_data_analysis import get_exp_reward_around_transition
+from exp_data_analysis import get_exp_reward_around_transition, \
+    mouse_behaviour_data,mouse_neural_data,mouse_behaviour_for_neural_data
 from utils import rootmeansquarederror,  process_transitions, get_switchtimes
 from plot_simulation_data import load_simdata_seeds, plot_mismatch_vs_perfectswitch
 
@@ -116,7 +117,7 @@ def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
         figabstract.savefig('RL_'+agent_type+'_'+trans+'_cosyne.pdf')
         figabstract.savefig('RL_'+agent_type+'_'+trans+'_cosyne.svg')
 
-def load_plot_expsimdata(filenamebase,seeds,new_data):
+def load_plot_expsimdata(filenamebase,seeds,new_data,mouse_behaviour_data):
 
     filenamebase += ('_newdata' if new_data else '')
 
@@ -158,7 +159,7 @@ def load_plot_expsimdata(filenamebase,seeds,new_data):
         transitions_actionscount_to_stimulus_o2v = \
             get_exp_reward_around_transition(trans='O2V',ACC=ACC_str,
                                             mice_list=mice_list,sessions_list=sessions_list,
-                                            new_data=new_data)
+                                            mouse_behaviour_data=mouse_behaviour_data)
     number_of_mice, across_mice_average_reward_v2o, \
         mice_average_reward_around_transtion_v2o, \
         mice_actionscount_to_stimulus_v2o, \
@@ -168,7 +169,7 @@ def load_plot_expsimdata(filenamebase,seeds,new_data):
         transitions_actionscount_to_stimulus_v2o = \
             get_exp_reward_around_transition(trans='V2O',ACC=ACC_str,
                                             mice_list=mice_list,sessions_list=sessions_list,
-                                            new_data=new_data)
+                                            mouse_behaviour_data=mouse_behaviour_data)
     print("finished reading experimental data.")
 
     ## obsolete - start
@@ -259,17 +260,12 @@ def load_plot_expsimdata(filenamebase,seeds,new_data):
 if __name__ == "__main__":
 
     # chooses one the below to average sim data over seeds
-    seeds = [1,2,3,4,5]
-    #seeds = [1]
-
-    # whether to load:
-    #  old (has ACC-on/control and ACC-off/exp) data,
-    #  or new (behaviour+neural w/ only ACC-on) data.
-    new_data = True
-    #new_data = False
+    #seeds = [1,2,3,4,5]
+    seeds = [1]
 
     ## choose one of the below:
-    #load_plot_expsimdata('simulation_data/simdata_belief_numparams4_ACCcontrol',seeds,new_data) # BeliefRL, ACC on/normal
-    #load_plot_expsimdata('simulation_data/simdata_belief_numparams4_ACCexp',seeds,new_data) # BeliefRL, ACC off
-    load_plot_expsimdata('simulation_data/simdata_basic_numparams2_ACCcontrol',seeds,new_data) # BasicRL, ACC on
+    ## use mouse_behaviour_for_neural_data instead mouse_behaviour_data when new_data (second last arg) is True.
+    #load_plot_expsimdata('simulation_data/simdata_belief_numparams4_ACCcontrol',seeds,True,mouse_behaviour_for_neural_data) # BeliefRL, ACC on/normal
+    load_plot_expsimdata('simulation_data/simdata_belief_numparams4_ACCexp',seeds,False,mouse_behaviour_data) # BeliefRL, ACC off
+    #load_plot_expsimdata('simulation_data/simdata_basic_numparams2_ACCcontrol',seeds,True,mouse_behaviour_for_neural_data) # BasicRL, ACC on
 

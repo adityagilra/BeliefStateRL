@@ -86,8 +86,10 @@ def plot_mismatch_vs_perfectswitch(mismatch_by_perfectswitch_o2v, mismatch_by_pe
     print('For significance testing, only taking',num_transitions,'transitions to compare with experiment.')
     # Also the p-value becomes negligible, and overflows into a high value for say 3000 samples!
     np.random.seed([1])
-    num_transitions_data = np.min((len(mismatch_by_perfectswitch_o2v[0]),len(mismatch_by_perfectswitch_v2o[0])))
-    idxs = np.random.permutation(np.array(range(num_transitions_data),dtype=int))[:num_transitions]
+    num_transitions_data = np.min((len(mismatch_by_perfectswitch_o2v[0]),len(mismatch_by_perfectswitch_o2v[1]),\
+                                    len(mismatch_by_perfectswitch_v2o[0]),len(mismatch_by_perfectswitch_v2o[1])))
+    idxs = np.random.permutation(np.array(range(num_transitions_data),dtype=int))\
+                                            [:np.min((num_transitions,num_transitions_data))]
     mismatch_by_perfectswitch_o2v_0 = np.array(mismatch_by_perfectswitch_o2v[0])[idxs]
     mismatch_by_perfectswitch_o2v_1 = np.array(mismatch_by_perfectswitch_o2v[1])[idxs]
     mismatch_by_perfectswitch_v2o_0 = np.array(mismatch_by_perfectswitch_v2o[0])[idxs]
@@ -321,17 +323,17 @@ def load_plot_ACConvsoff(filenameACCon, filenameACCoff):
 if __name__ == "__main__":
 
     # chooses one the below to average sim data over seeds
-    seeds = [1,2,3,4,5]
-    #seeds = [1]
+    #seeds = [1,2,3,4,5]
+    seeds = [1]
 
     ## choose one or more of the below:
-    load_plot_simdata('simulation_data/simdata_belief_numparams4_ACCcontrol_newdata',seeds) # BeliefRL, ACC on/normal -- new data
+    #load_plot_simdata('simulation_data/simdata_belief_numparams4_ACCcontrol_newdata',seeds) # BeliefRL, ACC on/normal -- new data
 
     #load_plot_simdata('simulation_data/simdata_belief_numparams4_ACCcontrol',seeds) # BeliefRL, ACC on/normal -- old data, not used for Fig 1
     #load_plot_simdata('simulation_data/simdata_belief_numparams4_ACCexp',seeds) # BeliefRL, ACC off -- old data, used for time to switch
     #load_plot_simdata('simulation_data/simdata_basic_numparams2_ACCcontrol_newdata',seeds) # BasicRL, ACC on -- old data, not used for Fig 1
 
     ## compare switching times between blocks for control (ACC on/normal) vs exp (ACC off)
-    #load_plot_ACConvsoff('simulation_data/simdata_belief_numparams4_ACCcontrol_seed1.mat',
-    #                    'simulation_data/simdata_belief_numparams4_ACCexp_seed1.mat')
+    load_plot_ACConvsoff('simulation_data/simdata_belief_numparams4_ACCcontrol_seed1.mat',
+                        'simulation_data/simdata_belief_numparams4_ACCexp_seed1.mat')
 

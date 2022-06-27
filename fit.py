@@ -113,7 +113,8 @@ if __name__ == "__main__":
                                         ACC_off_factor_visual=ACC_off_factor,
                                         ACC_off_factor_odor=ACC_off_factor,
                                         seed=seed,
-                                        num_params_to_fit=num_params_to_fit)
+                                        num_params_to_fit=num_params_to_fit,
+                                        new_data=new_data)
     
     # steps return by agent here are much longer
     #  and fitting would take quite long, so using lower number of steps

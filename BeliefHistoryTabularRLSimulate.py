@@ -14,7 +14,8 @@ import sys
 
 from BeliefHistoryTabularRL import BeliefHistoryTabularRL
 from plot_simulation_data import load_plot_simdata
-from plot_exp_sim_data import load_plot_expsimdata
+from plot_exp_sim_data import load_plot_expsimdata, \
+        mouse_behaviour_data,mouse_neural_data,mouse_behaviour_for_neural_data
 
 # reproducible random number generation -- env and agent use independent RNGs with same seed currently
 # set later in __main__
@@ -284,7 +285,7 @@ if __name__ == "__main__":
 
     # chooses one the below to repeat sims over seeds
     #seeds = [1,2,3,4,5]
-    seeds = [7]
+    seeds = [1]
 
     ############## choose / uncomment one of the agents below! #################
     agent_type='belief'
@@ -301,12 +302,12 @@ if __name__ == "__main__":
         num_params_to_fit = 4 # only for belief RL
         
     # choose whether ACC is inhibited or not
-    #ACC_off = True
-    ACC_off = False
+    ACC_off = True
+    #ACC_off = False
     if ACC_off:
-        # inhibited ACC, param obtained by fitting below 2 parama (rest default 4-param fit) to ACC on (control) data
+        # inhibited ACC, param obtained by fitting below 2 params (rest default 4-param fit) to ACC on (control) old data (new_data=False)
         ACC_off_factor_visual = 0.35
-        ACC_off_factor_odor = 0.35
+        ACC_off_factor_odor = 1.0
         ACC_str = 'exp'
     else:
         ACC_off_factor_visual = 1.0 # uninhibited ACC
@@ -321,8 +322,8 @@ if __name__ == "__main__":
     # whether to use parameters obtained by fitting to:
     #  old (has ACC-on/control and ACC-off/exp) data,
     #  or new (behaviour+neural w/ only ACC-on) data.
-    new_data = True
-    #new_data = False
+    #new_data = True
+    new_data = False
     if new_data and ACC_off:
         print('New (behaviour+neural) data does not have data for ACC off i.e. exp condition.')
         sys.exit(1)
@@ -335,7 +336,7 @@ if __name__ == "__main__":
     for seed in seeds:
         # Instantiate the env and the agent
         env, agent, steps, params_all = get_env_agent(agent_type, ACC_off_factor_visual, ACC_off_factor_odor, seed=seed,
-                                                     num_params_to_fit=num_params_to_fit, mouse_behaviour_data=mouse_behaviour_data)
+                                                     num_params_to_fit=num_params_to_fit, new_data=new_data)
         
         agent.reset()
         
@@ -370,5 +371,5 @@ if __name__ == "__main__":
                             'context_record':context_record,
                             'mismatch_error_record':mismatch_error_record})    
 
-    load_plot_expsimdata(savefilenamebase,seeds,new_data)
+    load_plot_expsimdata(savefilenamebase,seeds,new_data,mouse_behaviour_data)
     load_plot_simdata(savefilenamebase2,seeds)
