@@ -10,7 +10,8 @@ class BeliefHistoryTabularRL():
                 exploration_decay=False, exploration_decay_time_steps=100000,
                 learning_during_testing=False,
                 history=0,
-                beliefRL=True, belief_switching_rate=0.7, ACC_off_factor=1.,
+                beliefRL=True, belief_switching_rate=0.7,
+                ACC_off_factor_visual=1., ACC_off_factor_odor=1.,
                 weak_visual_factor = 1., context_sampling = True,
                 context_error_noiseSD_factor = 0.,
                 unrewarded_visual_exploration_rate = None,
@@ -66,7 +67,8 @@ class BeliefHistoryTabularRL():
             # ACC_off_factor should be between 0 and 1
             #  it is factor to reduce context prediction error as a proxy for ACC silencing
             #  setting is as 1 implies no ACC silencing
-            self.ACC_off_factor = ACC_off_factor
+            self.ACC_off_factor_visual = ACC_off_factor_visual
+            self.ACC_off_factor_odor = ACC_off_factor_odor
             #self.weak_visual_factor = weak_visual_factor # obsolete, not used now
             # whether exploration is modulated by context prediction error,
             #  and by how much additional factor
@@ -303,11 +305,12 @@ class BeliefHistoryTabularRL():
                 if self.observation == self.end_observation:
                     if self.previous_observation in self.odor_observations:
                         # definitely odor trial
-                        self.context_prediction_error = np.array((0.,1.)) - context_effective
+                        context_detected = np.array((0.,1.))
                     elif self.previous_observation in self.visual_observations:
                         # definitely visual trial
-                        self.context_prediction_error = np.array((1.,0.)) - context_effective
+                        context_detected = np.array((1.,0.))
                     # since effective context is (0,1) or (1,0), context prediction error is (0,0) or (-1,1) or (1,-1)
+                    self.context_prediction_error = context_detected - context_effective
                 else:
                     self.context_prediction_error = np.array((0.,0.))
 
@@ -321,7 +324,10 @@ class BeliefHistoryTabularRL():
                 #  that serves as a proxy for ACC silencing
                 # NOTE: currently noise is also reduced by the same factor,
                 #  move the noise addition line from before to after this, to not reduce noise by this factor
-                self.context_prediction_error *= self.ACC_off_factor
+                if context_detected[0] == 0: # odor trial
+                    self.context_prediction_error *= self.ACC_off_factor_odor
+                else: # visual trial
+                    self.context_prediction_error *= self.ACC_off_factor_visual
 
             ############### record reward, stimulus/observation, response/action, context and mismatch error
             # don't record for end of trial observations,

@@ -1,7 +1,8 @@
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from exp_data_analysis import get_exp_reward_around_transition
+from exp_data_analysis import get_exp_reward_around_transition, \
+    mouse_behaviour_data,mouse_neural_data,mouse_behaviour_for_neural_data
 from BeliefHistoryTabularRLSimulate import get_env_agent
 from utils import simulate_and_mse
 import sys
@@ -20,8 +21,8 @@ if __name__ == "__main__":
     else:
         # choose one of the below
         #num_params_to_fit = 2 
-        num_params_to_fit = 3 
-        #num_params_to_fit = 4 # only for belief RL
+        #num_params_to_fit = 3 
+        num_params_to_fit = 4 # only for belief RL
 
     # choose one of the two below, either fit only rewarded stimuli (+v, /+v, +o),
     #  or both rewarded and unrewarded (internally rewarded) stimuli,
@@ -41,21 +42,26 @@ if __name__ == "__main__":
         seeds = (1,2,3,4,5)
     
     # choose whether ACC is inhibited or not
-    #ACC_off = True
-    ACC_off = False
+    ACC_off = True
+    #ACC_off = False
     if ACC_off:
-        ACC_off_factor = 0.5 # inhibited ACC
+        ACC_off_factor = 0.5 # inhibited ACC, start fitting with same value for visual and odor
         ACC_str = 'exp'
     else:
         ACC_off_factor = 1.0 # uninhibited ACC
         ACC_str = 'control'
 
     # whether to fit to old (has ACC-on/control and ACC-off/exp) data or new (behaviour+neural w/ only ACC-on) data.
-    new_data = True
-    #new_data = False
+    #new_data = True
+    new_data = False
     if new_data and ACC_off:
         print('New (behaviour+neural) data does not have data for ACC off i.e. exp condition.')
         sys.exit(1)
+    if new_data:
+        # override the data to newest one, for fitting behaviour in 'control' (ACC on) condition
+        #  'exp' (ACC off) behaviour has not been recorded in newest version,
+        #   so use older data i.e. do not override it..
+        mouse_behaviour_data = mouse_behaviour_for_neural_data
 
     # choose one of the two below, either fit a session only, or all mice, all sessions.
     #fit_a_session = True
@@ -78,7 +84,7 @@ if __name__ == "__main__":
         transitions_actionscount_to_stimulus_o2v = \
             get_exp_reward_around_transition(trans='O2V',ACC=ACC_str,
                                             mice_list=mice_list,sessions_list=sessions_list,
-                                            new_data=new_data)
+                                            mouse_behaviour_data=mouse_behaviour_data)
     number_of_mice, across_mice_average_reward_v2o, \
         mice_average_reward_around_transtion_v2o, \
         mice_actionscount_to_stimulus_v2o, \
@@ -88,7 +94,7 @@ if __name__ == "__main__":
         transitions_actionscount_to_stimulus_v2o = \
             get_exp_reward_around_transition(trans='V2O',ACC=ACC_str,
                                             mice_list=mice_list,sessions_list=sessions_list,
-                                            new_data=new_data)
+                                            mouse_behaviour_data=mouse_behaviour_data)
     print("finished reading experimental data.")
 
     # replace nan-s by -0.5 in mouse behaviour (done for agent in fitting)
@@ -104,7 +110,8 @@ if __name__ == "__main__":
 
     # Instantiate the env and the agent
     env, agent, steps, params_all = get_env_agent(agent_type=agent_type, 
-                                        ACC_off_factor=ACC_off_factor,
+                                        ACC_off_factor_visual=ACC_off_factor,
+                                        ACC_off_factor_odor=ACC_off_factor,
                                         seed=seed,
                                         num_params_to_fit=num_params_to_fit)
     
@@ -174,9 +181,10 @@ if __name__ == "__main__":
         sys.exit(1)
 
     if ACC_off:
-        # fit only ACC_off_factor, all other params remain default as returned by get_env_agent()
-        parameters = (ACC_off_factor,)
-        ranges = ((0.,1.),)
+        # fit only ACC_off_factors for visual and odor trials,
+        #  all other params remain default as returned by get_env_agent()
+        parameters = (ACC_off_factor,ACC_off_factor) # (ACC_off_factor_visual,ACC_off_factor_odor)
+        ranges = ((0.,2.),(0.,2.))
 
     # local & global optimization are possible
     #  https://docs.scipy.org/doc/scipy/reference/optimize.html

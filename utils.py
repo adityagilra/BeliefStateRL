@@ -334,8 +334,10 @@ def simulate_and_mse(parameters,
                 #weak_visual_factor = parameters[2]
                 #agent.weak_visual_factor = weak_visual_factor
             else:
-                ACC_off_factor = parameters[0]
-                agent.ACC_off_factor = ACC_off_factor
+                ACC_off_factor_visual = parameters[0]
+                ACC_off_factor_odor = parameters[1]
+                agent.ACC_off_factor_visual = ACC_off_factor_visual
+                agent.ACC_off_factor_odor = ACC_off_factor_odor
         else:
             exploration_rate = parameters[0]
             learning_rate = parameters[1]

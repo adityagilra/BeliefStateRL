@@ -20,7 +20,8 @@ from plot_exp_sim_data import load_plot_expsimdata
 # set later in __main__
 #seed = 1
 
-def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_fit=4, new_data=True):
+def get_env_agent(agent_type='belief', ACC_off_factor_visual=1., ACC_off_factor_odor=1.,
+                                seed=1, num_params_to_fit=4, new_data=True):
     # use one of these environments,
     #  with or without blank state at start of each trial
     # OBSOLETE - with blanks environment won't work,
@@ -265,7 +266,8 @@ def get_env_agent(agent_type='belief', ACC_off_factor=1., seed=1, num_params_to_
                          learning_during_testing, context_sampling )
         agent = BeliefHistoryTabularRL(env,history=0,beliefRL=True,
                                         belief_switching_rate=belief_switching_rate,
-                                        ACC_off_factor = ACC_off_factor,
+                                        ACC_off_factor_visual = ACC_off_factor_visual,
+                                        ACC_off_factor_odor = ACC_off_factor_odor,
                                         alpha=alpha, epsilon=epsilon, seed=seed,
                                         learning_during_testing=learning_during_testing,
                                         context_sampling = context_sampling,
@@ -302,10 +304,13 @@ if __name__ == "__main__":
     #ACC_off = True
     ACC_off = False
     if ACC_off:
-        ACC_off_factor = 0.35 # inhibited ACC, param obtained by fitting 1-param (rest default 4-param fit) to ACC off data
+        # inhibited ACC, param obtained by fitting below 2 parama (rest default 4-param fit) to ACC on (control) data
+        ACC_off_factor_visual = 0.35
+        ACC_off_factor_odor = 0.35
         ACC_str = 'exp'
     else:
-        ACC_off_factor = 1.0 # uninhibited ACC
+        ACC_off_factor_visual = 1.0 # uninhibited ACC
+        ACC_off_factor_odor = 1.0 # uninhibited ACC
         ACC_str = 'control'
 
     # choose one of the two below, either fit only rewarded stimuli (+v, /+v, +o),
@@ -321,11 +326,16 @@ if __name__ == "__main__":
     if new_data and ACC_off:
         print('New (behaviour+neural) data does not have data for ACC off i.e. exp condition.')
         sys.exit(1)
+    if new_data:
+        # override the data to newest one, for fitting behaviour in 'control' (ACC on) condition
+        #  'exp' (ACC off) behaviour has not been recorded in newest version,
+        #   so use older data i.e. do not override it..
+        mouse_behaviour_data = mouse_behaviour_for_neural_data
     
     for seed in seeds:
         # Instantiate the env and the agent
-        env, agent, steps, params_all = get_env_agent(agent_type, ACC_off_factor, seed=seed,
-                                                     num_params_to_fit=num_params_to_fit, new_data=new_data)
+        env, agent, steps, params_all = get_env_agent(agent_type, ACC_off_factor_visual, ACC_off_factor_odor, seed=seed,
+                                                     num_params_to_fit=num_params_to_fit, mouse_behaviour_data=mouse_behaviour_data)
         
         agent.reset()
         

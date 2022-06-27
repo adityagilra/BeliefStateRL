@@ -70,7 +70,6 @@ np.random.seed(1)
 mouse_behaviour_data = scipyio.loadmat(
                     "experiment_data/exported_behavioural_data_Control_vs_ACC_silencing_-30_+30_trials_secondbug_corrected.mat",
                                         struct_as_record=True)
-
 transition_index = 29
 
 # example access:
@@ -101,18 +100,14 @@ mouse_behaviour_for_neural_data = scipyio.loadmat(
 
 #==============================================================
 
-reward_size=10
-punish_factor=0.5
+reward_size=1.
+punish_factor=1.
 # the exp data doesn't contain blanks and end of trial cues as in the model task, so not taken into account
 #lick_without_reward_factor=0.2
 
 def get_exp_reward_around_transition(trans='O2V', ACC='control',
-                                        mice_list=None, sessions_list=None, new_data=True):
-    if new_data:
-        # override the data to newest one, for fitting behaviour in 'control' (ACC on) condition
-        #  'exp' (ACC off) behaviour has not been recorded in newest version,
-        #   so use older data i.e. do not override it..
-        mouse_behaviour_data = mouse_behaviour_for_neural_data
+                                        mice_list=None, sessions_list=None,
+                                        mouse_behaviour_data=mouse_behaviour_data):
 
     # ACC can be 'control' (without ACC silenced) or 'exp' (with ACC silenced)
     behaviour_data = mouse_behaviour_data['expData'][ACC][0,0]['mouse'+trans][0,0]
@@ -424,6 +419,11 @@ if __name__ == "__main__":
     if new_data and ACC=='exp':
         print('New (behaviour+neural) data does not have data for ACC off i.e. exp condition.')
         sys.exit(1)
+    if new_data:
+        # override the data to newest one, for fitting behaviour in 'control' (ACC on) condition
+        #  'exp' (ACC off) behaviour has not been recorded in newest version,
+        #   so use older data i.e. do not override it..
+        mouse_behaviour_data = mouse_behaviour_for_neural_data
 
     number_of_mice, across_mice_average_reward, \
         mice_average_reward_around_transtion, \
@@ -432,7 +432,8 @@ if __name__ == "__main__":
         mice_probability_action_given_stimulus, \
         mean_probability_action_given_stimulus, \
         transitions_actionscount_to_stimulus = \
-            get_exp_reward_around_transition(trans='O2V',ACC=ACC,new_data=new_data)
+            get_exp_reward_around_transition(trans='O2V',ACC=ACC,
+                mouse_behaviour_data=mouse_behaviour_data)
 
     fig1 = plt.figure()
     for mouse_number in range(number_of_mice):
@@ -455,7 +456,8 @@ if __name__ == "__main__":
         mice_probability_action_given_stimulus, \
         mean_probability_action_given_stimulus, \
         transitions_actionscount_to_stimulus = \
-            get_exp_reward_around_transition(trans='V2O',ACC=ACC,new_data=new_data)
+            get_exp_reward_around_transition(trans='V2O',ACC=ACC,
+                mouse_behaviour_data=mouse_behaviour_data)
 
     plot_prob_actions_given_stimuli(trans='V2O')
     
