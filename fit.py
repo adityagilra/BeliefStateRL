@@ -184,7 +184,7 @@ if __name__ == "__main__":
     if ACC_off:
         # fit only ACC_off_factors for visual and odor trials,
         #  all other params remain default as returned by get_env_agent()
-        parameters = (0.3,1.0) # (ACC_off_factor_visual,ACC_off_factor_odor)
+        parameters = (0.222,1.11) # (ACC_off_factor_visual,ACC_off_factor_odor)
         ranges = ((0.,2.),(0.,2.))
 
     # local & global optimization are possible
@@ -226,16 +226,16 @@ if __name__ == "__main__":
     ##  so once grid point minimum is found,
     ##  fmin searches locally around this, using best grid point as a starting value
     ##  can set finish=None to just return the best point on the grid
-    result = brute(simulate_and_mse, ranges=ranges, 
-                        args=(agent_type, agent, steps,
-                        transitions_actionscount_to_stimulus_o2v,
-                        transitions_actionscount_to_stimulus_v2o,
-                        fit_rewarded_stimuli_only, num_params_to_fit,
-                        half_window, seeds, 0, 1, ACC_off),
-                        Ns=10, full_output=True, disp=True, workers=1, finish=None)
+    #result = brute(simulate_and_mse, ranges=ranges, 
+    #                    args=(agent_type, agent, steps,
+    #                    transitions_actionscount_to_stimulus_o2v,
+    #                    transitions_actionscount_to_stimulus_v2o,
+    #                    fit_rewarded_stimuli_only, num_params_to_fit,
+    #                    half_window, seeds, 0, 1, ACC_off),
+    #                    Ns=10, full_output=True, disp=True, workers=1, finish=None)
 
-    print(result)
-    sys.exit(0)
+    #print(result)
+    #sys.exit(0)
 
     # Brute optimization is too slow; and compared to a coarse grid, manual tuning is better!
     # Set good starting parameters manually and then do local optimization
