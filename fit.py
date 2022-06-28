@@ -228,8 +228,8 @@ if __name__ == "__main__":
     ##  can set finish=None to just return the best point on the grid
     result = brute(simulate_and_mse, ranges=ranges, 
                         args=(agent_type, agent, steps,
-                        mean_probability_action_given_stimulus_o2v,
-                        mean_probability_action_given_stimulus_v2o,
+                        transitions_actionscount_to_stimulus_o2v,
+                        transitions_actionscount_to_stimulus_v2o,
                         fit_rewarded_stimuli_only, num_params_to_fit,
                         half_window, seeds, 0, 1, ACC_off),
                         Ns=10, full_output=True, disp=True, workers=1, finish=None)
