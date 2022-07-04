@@ -83,13 +83,13 @@ def plot_mismatch_vs_perfectswitch(mismatch_by_perfectswitch_o2v, mismatch_by_pe
     print('Numbers of imperfect and perfect switches for V2O =',
             len(mismatch_by_perfectswitch_v2o[0]),len(mismatch_by_perfectswitch_v2o[1]))
     num_transitions = 70 # number of transitions in new behaviour+neural data
-    print('For significance testing, only taking',num_transitions,'transitions to compare with experiment.')
     # Also the p-value becomes negligible, and overflows into a high value for say 3000 samples!
     np.random.seed([1])
     num_transitions_data = np.min((len(mismatch_by_perfectswitch_o2v[0]),len(mismatch_by_perfectswitch_o2v[1]),\
                                     len(mismatch_by_perfectswitch_v2o[0]),len(mismatch_by_perfectswitch_v2o[1])))
-    idxs = np.random.permutation(np.array(range(num_transitions_data),dtype=int))\
-                                            [:np.min((num_transitions,num_transitions_data))]
+    num_transitions_taken = np.min((num_transitions,num_transitions_data))
+    print('For significance testing, only taking',num_transitions_taken,'transitions to compare with experiment.')
+    idxs = np.random.permutation(np.array(range(num_transitions_data),dtype=int))[:num_transitions_taken]
     mismatch_by_perfectswitch_o2v_0 = np.array(mismatch_by_perfectswitch_o2v[0])[idxs]
     mismatch_by_perfectswitch_o2v_1 = np.array(mismatch_by_perfectswitch_o2v[1])[idxs]
     mismatch_by_perfectswitch_v2o_0 = np.array(mismatch_by_perfectswitch_v2o[0])[idxs]

@@ -184,8 +184,14 @@ if __name__ == "__main__":
     if ACC_off:
         # fit only ACC_off_factors for visual and odor trials,
         #  all other params remain default as returned by get_env_agent()
-        parameters = (0.222,1.11) # (ACC_off_factor_visual,ACC_off_factor_odor)
-        ranges = ((0.,2.),(0.,2.))
+        # choose one of the below: fit a common ACC_off_factor, or 2 different ones for visual and odor
+        # one common ACC_off_factor
+        parameters = (0.35,)
+        ranges = ((0.,2.),)
+        # 2 different ACC_off_factors for visual and odor
+        #parameters = (0.222,0.667) # (ACC_off_factor_visual,ACC_off_factor_odor)
+        #parameters = (0.35,1.) # (ACC_off_factor_visual,ACC_off_factor_odor)
+        #ranges = ((0.,2.),(0.,2.))
 
     # local & global optimization are possible
     #  https://docs.scipy.org/doc/scipy/reference/optimize.html

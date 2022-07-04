@@ -306,8 +306,8 @@ if __name__ == "__main__":
     #ACC_off = False
     if ACC_off:
         # inhibited ACC, param obtained by fitting below 2 params (rest default 4-param fit) to ACC on (control) old data (new_data=False)
-        ACC_off_factor_visual = 0.35
-        ACC_off_factor_odor = 1.0
+        ACC_off_factor_visual = 0.212
+        ACC_off_factor_odor = 0.674
         ACC_str = 'exp'
     else:
         ACC_off_factor_visual = 1.0 # uninhibited ACC

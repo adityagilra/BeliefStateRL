@@ -335,7 +335,10 @@ def simulate_and_mse(parameters,
                 #agent.weak_visual_factor = weak_visual_factor
             else:
                 ACC_off_factor_visual = parameters[0]
-                ACC_off_factor_odor = parameters[1]
+                if len(parameters) == 1: # one common ACC_off_factor
+                    ACC_off_factor_odor = parameters[0]
+                else: # separate ACC_off_factors for visual and odor
+                    ACC_off_factor_odor = parameters[1]
                 agent.ACC_off_factor_visual = ACC_off_factor_visual
                 agent.ACC_off_factor_odor = ACC_off_factor_odor
         else:
