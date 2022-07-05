@@ -184,14 +184,19 @@ if __name__ == "__main__":
     if ACC_off:
         # fit only ACC_off_factors for visual and odor trials,
         #  all other params remain default as returned by get_env_agent()
-        # choose one of the below: fit a common ACC_off_factor, or 2 different ones for visual and odor
+        
+        # uncomment one of the below: fit a common ACC_off_factor, or 2 different ones for visual and odor
+        
         # one common ACC_off_factor
-        parameters = (0.35,)
-        ranges = ((0.,2.),)
+        ##parameters = (0.267,) # for COBYLA fit, starting params from best grid point via brute which gave RMSE=0.0807
+        #parameters = (0.35,) # this starting point gives better RMSE of 0.0776 at 0.345995 than starting from above which gave RMSE of 0.7907 at 0.313875
+        #ranges = ((0.1,0.6),) # range for brute grid search
+
         # 2 different ACC_off_factors for visual and odor
         #parameters = (0.222,0.667) # (ACC_off_factor_visual,ACC_off_factor_odor)
         #parameters = (0.35,1.) # (ACC_off_factor_visual,ACC_off_factor_odor)
-        #ranges = ((0.,2.),(0.,2.))
+        parameters = (0.35,0.667) # (ACC_off_factor_visual,ACC_off_factor_odor)
+        ranges = ((0.1,0.6),(0.5,1.2)) # brute grid search over ((0.,2.),(0.,2.)) shows global minimum is in this range, so narrowing brute grid search
 
     # local & global optimization are possible
     #  https://docs.scipy.org/doc/scipy/reference/optimize.html
