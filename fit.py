@@ -193,9 +193,11 @@ if __name__ == "__main__":
         #ranges = ((0.1,0.6),) # range for brute grid search
 
         # 2 different ACC_off_factors for visual and odor
-        #parameters = (0.222,0.667) # (ACC_off_factor_visual,ACC_off_factor_odor)
+        #parameters = (0.222,0.667) # (ACC_off_factor_visual,ACC_off_factor_odor) # starting from best grid point on ranges ((0.,2.),(0.,2.))
         #parameters = (0.35,1.) # (ACC_off_factor_visual,ACC_off_factor_odor)
-        parameters = (0.35,0.667) # (ACC_off_factor_visual,ACC_off_factor_odor)
+        #parameters = (0.35,0.667) # (ACC_off_factor_visual,ACC_off_factor_odor)
+        parameters = (0.211,0.5) # (ACC_off_factor_visual,ACC_off_factor_odor) # starting from best grid point on ranges ((0.1,0.6),(0.5,1.2))
+        #parameters = (0.267,0.967)
         ranges = ((0.1,0.6),(0.5,1.2)) # brute grid search over ((0.,2.),(0.,2.)) shows global minimum is in this range, so narrowing brute grid search
 
     # local & global optimization are possible
