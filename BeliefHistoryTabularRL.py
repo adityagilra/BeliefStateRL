@@ -9,6 +9,7 @@ class BeliefHistoryTabularRL():
     def __init__(self, env, policy=1, alpha=0.1, epsilon=0.1, seed=None,
                 exploration_decay=False, exploration_decay_time_steps=100000,
                 learning_during_testing=False,
+                onlyexploration_nolearning_during_testing=False,
                 history=0,
                 beliefRL=True, belief_switching_rate=0.7,
                 ACC_off_factor_visual=1., ACC_off_factor_odor=1.,
@@ -39,6 +40,7 @@ class BeliefHistoryTabularRL():
         self.exploration_decay_time_steps = exploration_decay_time_steps
 
         self.learning_during_testing = learning_during_testing
+        self.onlyexploration_nolearning_during_testing = onlyexploration_nolearning_during_testing
 
         # if history, then store current and previous observations as state
         # else just store current observation as state
@@ -229,8 +231,10 @@ class BeliefHistoryTabularRL():
         #print('Training agent with params: belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate =',
         #        self.belief_switching_rate, self.context_error_noiseSD_factor, self.epsilon, self.unrewarded_visual_exploration_rate)
 
-        # learning and exploration only occur till this time step
-        if self.learning_during_testing:
+        # learning occurs only till `learning_time_steps`
+        # if learning_during_testing == True, then learning and exploration occurs till end of simulation `steps`
+        # if onlyexploration_nolearning_during_testing == True, then learning till steps//2 and exploration till end
+        if self.learning_during_testing and (not self.onlyexploration_nolearning_during_testing):
             learning_time_steps = steps
         else:
             learning_time_steps = steps//2
@@ -253,8 +257,9 @@ class BeliefHistoryTabularRL():
 
         for self.t in range(1,steps):
 
-            # no exploration after learning stops!
-            if self.t>learning_time_steps:
+            # no exploration after learning stops! 
+            #  unless overriden by onlyexploration_nolearning_during_testing
+            if self.t>learning_time_steps and (not self.onlyexploration_nolearning_during_testing):
                 exploration_rate = 0.
             else:
                 exploration_rate = self.epsilon
@@ -413,9 +418,10 @@ class BeliefHistoryTabularRL():
             #################### context belief updation
             if self.beliefRL:
                 ###### update context belief by context prediction error
-                ###### Ideally, I should be doing a Bayesian update,
-                ######  but this seems easier to implement bio-plausibly,
+                ###### Ideally, I should be doing a Bayesian update with a model,
+                ######  but this integration of context_error followed by clipping and normalization seems easier to implement bio-plausibly,
                 ######  and will be similar to (or even possibly indistinguishable from) a Bayesian update
+                ###### Also, the ACC represents a context prediction error which is easier to incorporate this way instead of a Bayesian model.
                 self.context_belief_probabilities += \
                         self.belief_switching_rate * self.context_prediction_error
 

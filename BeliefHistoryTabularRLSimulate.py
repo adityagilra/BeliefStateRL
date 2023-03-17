@@ -40,7 +40,15 @@ def get_env_agent(agent_type='belief', ACC_off_factor_visual=1., ACC_off_factor_
     #  and recording_time_steps
 
     ############# ACHTUNG: setting learning_time_steps =
-    # steps means that learning is always on, steps//2 means that learning stops when recording
+    # = steps means that learning is always on, = steps//2 means that learning stops when recording
+    # simulation runs for `steps`, Q-value updation i.e. learning stops after `learning_time_steps`
+    # learning_during_testing = True / False turns on both exploration with rate epsilon and learning with rate alpha during testing
+    # onlyexploration_nolearning_during_testing = True overrides learning_during_testing = True,
+    #  and turns on exploration with rate epsilon but turns off learning during testing.
+    # this is for historical reasons, otherwise I could have had boolean flags for just exploration and just learning,
+    # though of course learning (by reinforcement) needs exploration, which partly explains this choice of flags.
+
+    onlyexploration_nolearning_during_testing = False
 
     # instantiate the RL agent either with history or belief
     # choose one of the below:
@@ -192,63 +200,82 @@ def get_env_agent(agent_type='belief', ACC_off_factor_visual=1., ACC_off_factor_
 
         else: ## if context_sampling == False
 
-            if new_data: # params for latest fits with new data (for Fig 1)
-                if num_params_to_fit == 2:
-                    ##### obtained by 2-param fit
-                    belief_switching_rate, context_error_noiseSD_factor \
-                                = 0.43417968, 4.13535097 # fit p(lick|stimuli) for all 4 stimuli # exploration on
-                    epsilon, exploration_add_factor_for_context_uncertainty, alpha \
-                                = 0.1, 0, 0.1                
-                elif num_params_to_fit == 3:
-                    ##### obtained by 3-param fit
-                    belief_switching_rate, context_error_noiseSD_factor, epsilon \
-                                = 0.3172727, 4.61738219, 0.01069627
-                    exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
-                if num_params_to_fit == 4:
-                    ##### obtained by 4-param fit
-                    belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
-                                = 0.69528583, 2.0606016 , 0.07528155, 0.32492735  # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # rmse = 0.07508711274249896 across 5 seeds fitting all data using reward structure 1, 1, 1, COBYLA local fit tol=5e-6 successfully, starting from good values: 0.7, 2., 0.1, 0.4
-                    exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
+            # onlyexploration_nolearning_during_testing = True overrides learning_during_testing = True in the model
+            onlyexploration_nolearning_during_testing = True
 
-            else: # params for fits to older data (only for control vs exp time to perfect switch)
-                if num_params_to_fit == 2:
-                    ##### obtained by 2-param fit -- note: switching rate is at the border of allowed, so redo
-                    ##belief_switching_rate, context_error_noiseSD_factor \
-                    ##           = 0.30890625, 2.01875 # fit p(lick|stimuli) for only reward-structure-known stimuli # exploration on during testing, & context_sampling=False, reward structure 10, 0.5, 1
-                                 #= 0.285, 2.1 fit p(lick|stimuli) for all stimuli (buggy nan-s fitting) # exploration on during testing, and context_sampling is False, reward structure 10, 0.5, 1
-                                 ##= 0.490625, 3.065625
-                     
-                    belief_switching_rate, context_error_noiseSD_factor \
-                                = 0.43417968, 4.13535097 # fit p(lick|stimuli) for only reward-structure known stimuli # exploration on during testing, & context_sampling=False # mse = 0.0006851, reward structure 1, 1, 1
-                                #= 0.45844917, 2.71556625 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # mse = 0.004846, reward structure 1, 1, 1
+            if onlyexploration_nolearning_during_testing:
+                if new_data:     # new data only ACC on, but used in Fig 1
+                    if num_params_to_fit == 4:
+                        belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
+                                    = 0.70793119, 2.00387391, 0.07433045, 0.29471044 # fitted on 2023-04-14
+                        exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
+                    else:
+                        print('Have not fitted new data with onlyexploration_nolearning_during_testing=True and num_params_to_fit <> 4. Set to False or =4 resp. and run.')
+                        sys.exit()
+                    
+                else:            # old data with ACC-on and ACC-off
+                    print('Have not fitted old data (ACC on vs off) with onlyexploration_nolearning_during_testing=True. Set to False and run.')
+                    sys.exit()
 
-                                #= 0.18940429, 1.34079591 # # fit p(lick|stimuli) for only reward-structure-known stimuli # exploration off during testing, & context_sampling=True
-                                #= 0.86282212, 3.09287167 # fit p(lick|stimuli) for all stimuli # exploration off during testing, & context_sampling=True
-                    epsilon, exploration_add_factor_for_context_uncertainty, alpha \
-                                = 0.1, 0, 0.1
+            else:        # onlyexploration_nolearning_during_testing = False
 
-                elif num_params_to_fit == 3:
-                    ##### obtained by 3-param fit
-                    belief_switching_rate, context_error_noiseSD_factor, epsilon \
-                                = 0.3172727, 4.61738219, 0.01069627
-                    #belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
-                    #            = 0.69703441, 0., 0.09965295, 0.44441895
-                    exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
+                if new_data: # params for latest fits with new data (for Fig 1)
+                    if num_params_to_fit == 2:
+                        ##### obtained by 2-param fit
+                        belief_switching_rate, context_error_noiseSD_factor \
+                                    = 0.43417968, 4.13535097 # fit p(lick|stimuli) for all 4 stimuli # exploration on
+                        epsilon, exploration_add_factor_for_context_uncertainty, alpha \
+                                    = 0.1, 0, 0.1                
+                    elif num_params_to_fit == 3:
+                        ##### obtained by 3-param fit
+                        belief_switching_rate, context_error_noiseSD_factor, epsilon \
+                                    = 0.3172727, 4.61738219, 0.01069627
+                        exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
+                    if num_params_to_fit == 4:
+                        ##### obtained by 4-param fit
+                        belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
+                                    = 0.69528583, 2.0606016 , 0.07528155, 0.32492735  # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # rmse = 0.07508711274249896 across 5 seeds fitting all data using reward structure 1, 1, 1, COBYLA local fit tol=5e-6 successfully, starting from good values: 0.7, 2., 0.1, 0.4
+                        exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
 
-                elif num_params_to_fit == 4:
-                    ##### obtained by 4-param fit
-                    belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
-                                = 0.71308534, 2.05177685, 0.08250793, 0.47370851  # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # rmse = 0.05396551893600141 across 5 seeds fitting all data using reward structure 1, 1, 1, COBYLA local fit tol=5e-6 successfully, starting from good values: 0.7, 2., 0.1, 0.4
+                else: # params for fits to older data (only for control vs exp time to perfect switch)
+                    if num_params_to_fit == 2:
+                        ##### obtained by 2-param fit -- note: switching rate is at the border of allowed, so redo
+                        ##belief_switching_rate, context_error_noiseSD_factor \
+                        ##           = 0.30890625, 2.01875 # fit p(lick|stimuli) for only reward-structure-known stimuli # exploration on during testing, & context_sampling=False, reward structure 10, 0.5, 1
+                                     #= 0.285, 2.1 fit p(lick|stimuli) for all stimuli (buggy nan-s fitting) # exploration on during testing, and context_sampling is False, reward structure 10, 0.5, 1
+                                     ##= 0.490625, 3.065625
+                    
+                        belief_switching_rate, context_error_noiseSD_factor \
+                                    = 0.43417968, 4.13535097 # fit p(lick|stimuli) for only reward-structure known stimuli # exploration on during testing, & context_sampling=False # mse = 0.0006851, reward structure 1, 1, 1
+                                    #= 0.45844917, 2.71556625 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # mse = 0.004846, reward structure 1, 1, 1
 
-                    #belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
-                    #            = 0.69703441, 2.01253643, 0.09965295, 0.44441895 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # 1 set of 5 params in 5-fold CV # seed=1 # rmse = 0.05923636041587643, test rmse = 0.09877881078233221, reward structure 1, 1, 1, COBYLA local fit tol=5e-6 successfully, starting from good values: 0.7, 2., 0.1, 0.4
-                    #belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
-                    #            = 0.46048665, 4.90591006, 0.51447091, 0.44796221 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # mse = 0.0021553571995931737, reward structure 1, 1, 1, max func evals exceeded -- did not fit
-                    exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
+                                    #= 0.18940429, 1.34079591 # # fit p(lick|stimuli) for only reward-structure-known stimuli # exploration off during testing, & context_sampling=True
+                                    #= 0.86282212, 3.09287167 # fit p(lick|stimuli) for all stimuli # exploration off during testing, & context_sampling=True
+                        epsilon, exploration_add_factor_for_context_uncertainty, alpha \
+                                    = 0.1, 0, 0.1
 
-                    #belief_switching_rate, context_error_noiseSD_factor, epsilon, alpha \
-                    #            = 0.3021444 , 0.50150228, 0.49937703, 0.13204827 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # mse = 0.002568355577903245, reward structure 1, 1, 1
-                    #exploration_add_factor_for_context_uncertainty = 0
+                    elif num_params_to_fit == 3:
+                        ##### obtained by 3-param fit
+                        belief_switching_rate, context_error_noiseSD_factor, epsilon \
+                                    = 0.3172727, 4.61738219, 0.01069627
+                        #belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
+                        #            = 0.69703441, 0., 0.09965295, 0.44441895
+                        exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
+
+                    elif num_params_to_fit == 4:
+                        ##### obtained by 4-param fit
+                        belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
+                                    = 0.71308534, 2.05177685, 0.08250793, 0.47370851  # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # rmse = 0.05396551893600141 across 5 seeds fitting all data using reward structure 1, 1, 1, COBYLA local fit tol=5e-6 successfully, starting from good values: 0.7, 2., 0.1, 0.4
+                        exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
+
+                        #belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
+                        #            = 0.69703441, 2.01253643, 0.09965295, 0.44441895 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # 1 set of 5 params in 5-fold CV # seed=1 # rmse = 0.05923636041587643, test rmse = 0.09877881078233221, reward structure 1, 1, 1, COBYLA local fit tol=5e-6 successfully, starting from good values: 0.7, 2., 0.1, 0.4
+                        #belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
+                        #            = 0.46048665, 4.90591006, 0.51447091, 0.44796221 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # mse = 0.0021553571995931737, reward structure 1, 1, 1, max func evals exceeded -- did not fit
+
+                        #belief_switching_rate, context_error_noiseSD_factor, epsilon, alpha \
+                        #            = 0.3021444 , 0.50150228, 0.49937703, 0.13204827 # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # mse = 0.002568355577903245, reward structure 1, 1, 1
+                        #exploration_add_factor_for_context_uncertainty = 0
 
         # choose one of the below, typically learning is off during testing
         #learning_during_testing = False
@@ -264,13 +291,14 @@ def get_env_agent(agent_type='belief', ACC_off_factor_visual=1., ACC_off_factor_
 
         params_all = ( (belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate,
                                 exploration_add_factor_for_context_uncertainty, alpha),
-                         learning_during_testing, context_sampling )
+                         learning_during_testing, onlyexploration_nolearning_during_testing, context_sampling )
         agent = BeliefHistoryTabularRL(env,history=0,beliefRL=True,
                                         belief_switching_rate=belief_switching_rate,
                                         ACC_off_factor_visual = ACC_off_factor_visual,
                                         ACC_off_factor_odor = ACC_off_factor_odor,
                                         alpha=alpha, epsilon=epsilon, seed=seed,
                                         learning_during_testing=learning_during_testing,
+                                        onlyexploration_nolearning_during_testing=onlyexploration_nolearning_during_testing,
                                         context_sampling = context_sampling,
                                         context_error_noiseSD_factor = context_error_noiseSD_factor,
                                         unrewarded_visual_exploration_rate = unrewarded_visual_exploration_rate,
@@ -302,8 +330,8 @@ if __name__ == "__main__":
         num_params_to_fit = 4 # only for belief RL
         
     # choose whether ACC is inhibited or not
-    ACC_off = True
-    #ACC_off = False
+    #ACC_off = True
+    ACC_off = False
     if ACC_off:
         # inhibited ACC, param obtained by fitting below 2 params (rest default 4-param fit) to ACC on (control) old data (new_data=False)
         ACC_off_factor_visual = 0.212
@@ -322,8 +350,8 @@ if __name__ == "__main__":
     # whether to use parameters obtained by fitting to:
     #  old (has ACC-on/control and ACC-off/exp) data,
     #  or new (behaviour+neural w/ only ACC-on) data.
-    #new_data = True
-    new_data = False
+    new_data = True
+    #new_data = False
     if new_data and ACC_off:
         print('New (behaviour+neural) data does not have data for ACC off i.e. exp condition.')
         sys.exit(1)
@@ -337,7 +365,8 @@ if __name__ == "__main__":
         # Instantiate the env and the agent
         env, agent, steps, params_all = get_env_agent(agent_type, ACC_off_factor_visual, ACC_off_factor_odor, seed=seed,
                                                      num_params_to_fit=num_params_to_fit, new_data=new_data)
-        
+        onlyexploration_nolearning_during_testing = params_all[2]
+
         agent.reset()
         
         # train the RL agent on the task
@@ -349,7 +378,7 @@ if __name__ == "__main__":
         print('Q-values dict {state: context x action} = ',agent.Q_array)
 
         savefilenamebase = 'simulation_data/simdata_'+agent_type+'_numparams'+str(num_params_to_fit)+\
-                            '_ACC'+ACC_str
+                             ('_nolearnwithexplore' if onlyexploration_nolearning_during_testing else '') +'_ACC'+ACC_str
         savefilenamebase2 = savefilenamebase + ('_newdata' if new_data else '')
         savefilename = savefilenamebase2 + '_seed'+str(seed)+'.mat'
         print('Saving to',savefilename)

@@ -42,8 +42,8 @@ if __name__ == "__main__":
         seeds = (1,2,3,4,5)
     
     # choose whether ACC is inhibited or not
-    ACC_off = True
-    #ACC_off = False
+    #ACC_off = True
+    ACC_off = False
     if ACC_off:
         ACC_off_factor = 0.5 # inhibited ACC, start fitting with same value for visual and odor
         ACC_str = 'exp'
@@ -52,8 +52,8 @@ if __name__ == "__main__":
         ACC_str = 'control'
 
     # whether to fit to old (has ACC-on/control and ACC-off/exp) data or new (behaviour+neural w/ only ACC-on) data.
-    #new_data = True
-    new_data = False
+    new_data = True
+    #new_data = False
     if new_data and ACC_off:
         print('New (behaviour+neural) data does not have data for ACC off i.e. exp condition.')
         sys.exit(1)
