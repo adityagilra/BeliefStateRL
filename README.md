@@ -10,7 +10,7 @@ pip:
  matplotlib==3.1.1  
  scipy==1.5.1  
   
-##To run simulations of the Simple and BeliefState RL agents with pre-fitted parameters to the experimental data:  
+## To run simulations of the Simple and BeliefState RL agents with pre-fitted parameters to the experimental data:  
 First, `cd` to the BeliefStateRL directory.  
 Create a directory to store simulation data (only once)  
 `mkdir simulation_data`  
@@ -49,7 +49,7 @@ You can also choose whether to simulate with the parameters that fit either the 
     #new_data = False
 ```
 
-The experimental data is in the folder `experiment_data`.  
+## The experimental data is in the folder `experiment_data`.  
 Some simple plots of the data can be made using:  
 `python exp_data_analysis.py`  
 
@@ -59,10 +59,10 @@ and
 `plot_exp_sim_data.py`
 after editing the filename of the simulation data in this script.
 
-The hierarchical task used in the the experiments to train the mice is transcribed as an OpenAI Gym environment in the directory `gym_tasks/envs/`.
+## The hierarchical task used in the the experiments to train the mice is transcribed as an OpenAI Gym environment in the directory `gym_tasks/envs/`.
  See `BeliefStateRLSimulate.py` on how to import and `BeliefStateRL.py` on how to use the environment.  
 
-##To fit the experimental data:  
+## To fit the experimental data:  
 `python fit.py`  
 
 Again set the type of agent, number of parameters to fit, etc. in `fit.py`.  
