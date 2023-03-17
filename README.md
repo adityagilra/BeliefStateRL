@@ -67,7 +67,8 @@ after editing the filename of the simulation data in this script.
 
 Again set the type of agent, number of parameters to fit, etc. in `fit.py`.  
 What these parameters do can be seen as comments in BeliefStateRLSimulate.py, more formally in Methods sections of the paper -- the definitive version is as coded into the agent in BeliefStateRL.py.  
+Here too, you need to select `new_data=True`/`False` and also whether `ACC_on=True`/`False` as above.  
 
 For model selection i.e. comparing basic vs belief models: Set `k_validation=5` to do 5-fold cross validation -- fitting parameters on 4/5th of the data and testing on 1/5th of the data
  using the specified model/agent (using only 1 seed i.e. not averaging over multiple seeds).  
-For obtaining fitted parameters for the best fit: Set `k_validation=1` to fit on the full data averaging RMSE of the agent across 5 seeds.  
+For obtaining fitted parameters for the best fit on the full dataset: Set `k_validation=1` to fit on the full data averaging RMSE of the agent across 5 seeds.  
