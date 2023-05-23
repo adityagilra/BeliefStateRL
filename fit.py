@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from exp_data_analysis import get_exp_reward_around_transition, \
-    mouse_behaviour_data,mouse_neural_data,mouse_behaviour_for_neural_data
+    mouse_behaviour_data,mouse_behaviour_data_newest,mouse_neural_data,mouse_behaviour_for_neural_data
 from BeliefHistoryTabularRLSimulate import get_env_agent
 from utils import simulate_and_mse
 import sys
@@ -51,17 +51,25 @@ if __name__ == "__main__":
         ACC_off_factor = 1.0 # uninhibited ACC
         ACC_str = 'control'
 
-    # whether to fit to old (has ACC-on/control and ACC-off/exp) data or new (behaviour+neural w/ only ACC-on) data.
-    new_data = True
-    #new_data = False
-    if new_data and ACC_off:
+    # whether to fit to:
+    #  0 = old (has ACC-on/control and ACC-off/exp) data, or
+    #  1 = new (behaviour+neural w/ only ACC-on) data, or
+    #  2 = newest data with 4 sessions (having 1st cue after V2O as unrewarded V2) prepended to above 1 (= new data).
+    #new_data = 0
+    #new_data = 1
+    new_data = 2
+    if new_data == 1 and ACC_off:
         print('New (behaviour+neural) data does not have data for ACC off i.e. exp condition.')
         sys.exit(1)
-    if new_data:
-        # override the data to newest one, for fitting behaviour in 'control' (ACC on) condition
-        #  'exp' (ACC off) behaviour has not been recorded in newest version,
-        #   so use older data i.e. do not override it..
-        mouse_behaviour_data = mouse_behaviour_for_neural_data
+    # override the data to newest one, for fitting behaviour in 'control' (ACC on) condition
+    #  'exp' (ACC off) behaviour has not been recorded in either new or newest data below
+    if new_data == 1:
+        mouse_behaviour_data = mouse_behaviour_for_neural_data # 'new' data
+    elif new_data == 2:
+        # 2023 May update: 'newest' data with 4 sessions (4 mice 1 session each) having 1st cue after V2O as unrewarded V2,
+        #                   prepended to rest 13 sessions of 'new' data, having 1st visual cue after V2O as unrewarded V1
+        # only the first 4 sessions of mouse_behaviour_data_newest are read in further below
+        mouse_behaviour_data = mouse_behaviour_for_neural_data # still read in the new data (same as last 13 sessions of newest data)
 
     # choose one of the two below, either fit a session only, or all mice, all sessions.
     #fit_a_session = True
@@ -95,8 +103,36 @@ if __name__ == "__main__":
             get_exp_reward_around_transition(trans='V2O',ACC=ACC_str,
                                             mice_list=mice_list,sessions_list=sessions_list,
                                             mouse_behaviour_data=mouse_behaviour_data)
+
+    if new_data == 2:
+        # read in only the latest part of the newest dataset i.e. first 4 sessions (4 mice with 1 session each)
+        number_of_mice_newest, across_mice_average_reward_o2v_newest, \
+            mice_average_reward_around_transtion_o2v_newest, \
+            mice_actionscount_to_stimulus_o2v_newest, \
+            mice_actionscount_to_stimulus_trials_o2v_newest, \
+            mice_probability_action_given_stimulus_o2v_newest, \
+            mean_probability_action_given_stimulus_o2v_newest, \
+            transitions_actionscount_to_stimulus_o2v_newest = \
+                get_exp_reward_around_transition(trans='O2V',ACC=ACC_str,
+                                                mice_list=[0,1,2,3],sessions_list=None,
+                                                mouse_behaviour_data=mouse_behaviour_data_newest)
+        number_of_mice_newest, across_mice_average_reward_v2o_newest, \
+            mice_average_reward_around_transtion_v2o_newest, \
+            mice_actionscount_to_stimulus_v2o_newest, \
+            mice_actionscount_to_stimulus_trials_v2o_newest, \
+            mice_probability_action_given_stimulus_v2o_newest, \
+            mean_probability_action_given_stimulus_v2o_newest, \
+            transitions_actionscount_to_stimulus_v2o_newest = \
+                get_exp_reward_around_transition(trans='V2O',ACC=ACC_str,
+                                                mice_list=[0,1,2,3],sessions_list=None,
+                                                mouse_behaviour_data=mouse_behaviour_data_newest)
+    else:
+        transitions_actionscount_to_stimulus_o2v_newest = None
+        transitions_actionscount_to_stimulus_v2o_newest = None
+
     print("finished reading experimental data.")
 
+    ## obsolete nan-s handling below
     # replace nan-s by -0.5 in mouse behaviour (done for agent in fitting)
     # this ensures that nan-s are mapped to nan-s for the fitting,
     # while remaining in absolute range of other values which are in [0,1]
@@ -261,6 +297,8 @@ if __name__ == "__main__":
                             args=(agent_type, agent, steps,
                                     transitions_actionscount_to_stimulus_o2v,
                                     transitions_actionscount_to_stimulus_v2o,
+                                    transitions_actionscount_to_stimulus_o2v_newest,
+                                    transitions_actionscount_to_stimulus_v2o_newest,
                                     fit_rewarded_stimuli_only, num_params_to_fit,
                                     half_window, seeds, k_idx, k_validation, ACC_off),
                             method='COBYLA', options={'tol':1e-6, 'rhobeg':0.05, 'disp':True}
@@ -271,6 +309,8 @@ if __name__ == "__main__":
         test_rmse = simulate_and_mse(result.x, agent_type, agent, steps,
                                     transitions_actionscount_to_stimulus_o2v,
                                     transitions_actionscount_to_stimulus_v2o,
+                                    transitions_actionscount_to_stimulus_o2v_newest,
+                                    transitions_actionscount_to_stimulus_v2o_newest,
                                     fit_rewarded_stimuli_only, num_params_to_fit,
                                     half_window, seeds, k_idx, k_validation, ACC_off, test=True)
         test_rmses.append(test_rmse)

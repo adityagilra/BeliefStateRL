@@ -70,10 +70,20 @@ np.random.seed(1)
 mouse_behaviour_data = scipyio.loadmat(
                     "experiment_data/exported_behavioural_data_Control_vs_ACC_silencing_-30_+30_trials_secondbug_corrected.mat",
                                         struct_as_record=True)
-transition_index = 29
-
 # example access:
 #print(mouse_behaviour_data['ans']['control'][0,0]['sessionV2O'][0,0][2,7][0,0]['stimulus'])
+
+transition_index = 29
+
+# 2023 May update: Nick and Adil have slightly modified the task to address reviewer concerns and have included newer data
+# As per Nick:
+# Combined data here is in the same format - everything is in 'expData.control.mouseV2O' or 'expData.control.mouseO2V'.
+# If you want to split into the old and new data: the first 4 cells are the new data and the following 13 cells are the old data used before.
+mouse_behaviour_data_newest = scipyio.loadmat(
+                    "experiment_data/exported_data_with_new_sessions.mat",
+                                        struct_as_record=True)
+# example access:
+#print(mouse_behaviour_data['expData']['control'][0,0]['sessionV2O'][0,0][2,7][0,0]['stimulus'])
 
 #================ neural data and related behaviour ==================
 
@@ -411,19 +421,24 @@ if __name__ == "__main__":
     ACC = 'control'
     #ACC = 'exp'
     
-    # whether to load:
-    #  old (has ACC-on/control and ACC-off/exp) data,
-    #  or new (behaviour+neural w/ only ACC-on) data.
-    new_data = True
-    #new_data = False
-    if new_data and ACC=='exp':
+    # whether to load new_data= :
+    #  0 = old (has ACC-on/control and ACC-off/exp) data, or
+    #  1 = new (behaviour+neural w/ only ACC-on) data, or
+    #  2 = newest data with 4 sessions (having 1st cue after V2O as unrewarded V2), prepended to 13 sessions of above 1 (= new data).
+    #new_data = 0
+    #new_data = 1
+    new_data = 2
+    if new_data == 0 and ACC_off:
         print('New (behaviour+neural) data does not have data for ACC off i.e. exp condition.')
         sys.exit(1)
-    if new_data:
+    if new_data == 1:
         # override the data to newest one, for fitting behaviour in 'control' (ACC on) condition
-        #  'exp' (ACC off) behaviour has not been recorded in newest version,
-        #   so use older data i.e. do not override it..
+        # can choose any one of the below
         mouse_behaviour_data = mouse_behaviour_for_neural_data
+    elif new_data == 2:
+        # 2023 May update: 'newest' data with 4 sessions having 1st cue after V2O as unrewarded V2, (in my environment first_V2O_visual_is_irrelV2==True)
+        #                   prepended to rest 13 sessions of 'new' data above, having 1st visual cue after V2O as unrewarded V1 (first_V2O_visual_is_irrelV2==Fa$        mouse_behaviour_data = mouse_behaviour_data_newest
+        mouse_behaviour_data = mouse_behaviour_data_newest
 
     number_of_mice, across_mice_average_reward, \
         mice_average_reward_around_transtion, \

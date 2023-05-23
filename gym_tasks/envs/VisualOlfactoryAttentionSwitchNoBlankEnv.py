@@ -24,7 +24,12 @@ Block Olfactory:
 
 After any block transition, shaping trials are given,
  where always a rewarded visual stimulus is shown in both blocks,
-  until the mouse gets 3 correct responses i.e. lick in visual block, no lick in olfactory block.
+  until the mouse gets 3 consecutive correct responses i.e. lick in visual block, no lick in olfactory block.
+ 2023 May update: if first_V2O_visual_is_irrelV2 == True,
+                    then first trial after V2O block change has irrelevant 'unrewarded' visual cue 2,
+                    later trials have visual cue 1 until 3 consecutive correct no-licks.
+                  if first_V2O_visual_is_irrelV2 == False,
+                    then after V2O block change, irrelevant 'rewarded' visual cue 1 is shown until 3 consecutive correct no-licks.
 We transition to the other block after at least 80% correct in past 30 trials,
  and 100% correct in ignoring past 10 irrelevant visual stimuli,
  and there should be at least 30 trials after initial shaping trials after a block transition.
@@ -44,7 +49,7 @@ from gym_tasks.envs.VisualOlfactoryAttentionSwitchEnv import VisualOlfactoryAtte
 class VisualOlfactoryAttentionSwitchNoBlankEnv(VisualOlfactoryAttentionSwitchEnv):
 
     def __init__(self, reward_size=10, punish_factor=0.5,
-                        lick_without_reward_factor=0.2, seed=1):
+                        lick_without_reward_factor=0.2, seed=1, first_V2O_visual_is_irrelV2=False):
         super(VisualOlfactoryAttentionSwitchNoBlankEnv, self).__init__(
                     reward_size, punish_factor, lick_without_reward_factor, seed )
 
@@ -52,6 +57,7 @@ class VisualOlfactoryAttentionSwitchNoBlankEnv(VisualOlfactoryAttentionSwitchEnv
         self.observations = self.visual_stimuli + self.olfactory_stimuli + ['end']
         self.observation_space = Discrete(len(self.observations))
         self.end_of_trial_observation_number = len(self.observations)-1
+        self.first_V2O_visual_is_irrelV2 = first_V2O_visual_is_irrelV2
 
     def _step(self, action):
         """
@@ -86,8 +92,11 @@ class VisualOlfactoryAttentionSwitchNoBlankEnv(VisualOlfactoryAttentionSwitchEnv
                 self._needless_lick(action)
 
                 if self.shaping_trials_correct < 3:
-                    # to-ignore rewarded visual stimulus is shown until 3 correct in a row
-                    self.observation_number = 0
+                    if self.first_V2O_visual_is_irrelV2 and self.trial_number_from_start_of_block == 0:
+                        self.observation_number = 1 # 2023 May update, 1st trial after V2O transition has V2 if first_V2O_visual_is_irrelV2==True
+                    else:
+                        # to-ignore rewarded visual stimulus V1 is shown until 3 correct in a row
+                        self.observation_number = 0
                 else:
                     if self.rng.uniform() < 0.7:
                         # one of visual stimuli is shown now, unrewarded

@@ -15,14 +15,14 @@ import sys
 from BeliefHistoryTabularRL import BeliefHistoryTabularRL
 from plot_simulation_data import load_plot_simdata
 from plot_exp_sim_data import load_plot_expsimdata, \
-        mouse_behaviour_data,mouse_neural_data,mouse_behaviour_for_neural_data
+        mouse_behaviour_data,mouse_behaviour_data_newest,mouse_neural_data,mouse_behaviour_for_neural_data
 
 # reproducible random number generation -- env and agent use independent RNGs with same seed currently
 # set later in __main__
 #seed = 1
 
 def get_env_agent(agent_type='belief', ACC_off_factor_visual=1., ACC_off_factor_odor=1.,
-                                seed=1, num_params_to_fit=4, new_data=True):
+                                seed=1, num_params_to_fit=4, new_data=2, first_V2O_visual_is_irrelV2=False):
     # use one of these environments,
     #  with or without blank state at start of each trial
     # OBSOLETE - with blanks environment won't work,
@@ -31,7 +31,8 @@ def get_env_agent(agent_type='belief', ACC_off_factor_visual=1., ACC_off_factor_
     # HARDCODED these observations to stimuli encoding
     env = gym.make('visual_olfactory_attention_switch_no_blank-v0',
                     reward_size=1., punish_factor=1.,
-                    lick_without_reward_factor=1., seed=seed)
+                    lick_without_reward_factor=1., seed=seed,
+                    first_V2O_visual_is_irrelV2=first_V2O_visual_is_irrelV2)
 
     ############# agent instatiation and agent parameters ###########
     # you need around 1,000,000 steps for enough transitions to average over
@@ -60,7 +61,7 @@ def get_env_agent(agent_type='belief', ACC_off_factor_visual=1., ACC_off_factor_
 
         learning_during_testing = True
 
-        if new_data: # params for latest fits with new data (for Fig 1)
+        if new_data == 1: # params for fits with new data
             if num_params_to_fit == 2:
                 epsilon, alpha = 0.25004935, 0.9 # fit p(lick|stimuli) for all stimuli # exploration on during testing # fitted successfully with mean rmse = 0.1439542839678069 across 5 seeds fitting all data using reward structure 1, 1, 1, COBYLA local fit tol=5e-6
                 # setting below to None will make it not be used
@@ -71,7 +72,9 @@ def get_env_agent(agent_type='belief', ACC_off_factor_visual=1., ACC_off_factor_
                 epsilon, alpha, unrewarded_visual_exploration_rate \
                         = 0.27232708, 0.74221187, 0.32848218 # fit p(lick|stimuli) for all stimuli # exploration on during testing # fitted successfully with mean rmse = 0.14638095502159895 across 5 seeds fitting all data using reward structure 1, 1, 1, COBYLA local fit tol=5e-6
                 params_all = ((epsilon, alpha, unrewarded_visual_exploration_rate), learning_during_testing)
-
+        elif new_data == 2:
+            print('Not fitted BasicRL with newest data.')
+            sys.exit()
         else: # params for fits to older data (only for control vs exp time to perfect switch)
             if num_params_to_fit == 2:
                 ### 2-param fit using brute to minimize mse,
@@ -204,7 +207,7 @@ def get_env_agent(agent_type='belief', ACC_off_factor_visual=1., ACC_off_factor_
             onlyexploration_nolearning_during_testing = True
 
             if onlyexploration_nolearning_during_testing:
-                if new_data:     # new data only ACC on, but used in Fig 1
+                if new_data == 1:     # new data only ACC on
                     if num_params_to_fit == 4:
                         belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
                                     = 0.70793119, 2.00387391, 0.07433045, 0.29471044 # fitted on 2023-04-14
@@ -212,14 +215,18 @@ def get_env_agent(agent_type='belief', ACC_off_factor_visual=1., ACC_off_factor_
                     else:
                         print('Have not fitted new data with onlyexploration_nolearning_during_testing=True and num_params_to_fit <> 4. Set to False or =4 resp. and run.')
                         sys.exit()
-                    
+                elif new_data == 2:
+                    if num_params_to_fit == 4: # not yet fitted, just copied from above
+                        belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
+                                    = 0.70793119, 2.00387391, 0.07433045, 0.29471044 # fitted on 2023-04-14
+                        exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
                 else:            # old data with ACC-on and ACC-off
                     print('Have not fitted old data (ACC on vs off) with onlyexploration_nolearning_during_testing=True. Set to False and run.')
                     sys.exit()
 
             else:        # onlyexploration_nolearning_during_testing = False
 
-                if new_data: # params for latest fits with new data (for Fig 1)
+                if new_data == 1: # params for latest fits with new data
                     if num_params_to_fit == 2:
                         ##### obtained by 2-param fit
                         belief_switching_rate, context_error_noiseSD_factor \
@@ -236,7 +243,9 @@ def get_env_agent(agent_type='belief', ACC_off_factor_visual=1., ACC_off_factor_
                         belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
                                     = 0.69528583, 2.0606016 , 0.07528155, 0.32492735  # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # rmse = 0.07508711274249896 across 5 seeds fitting all data using reward structure 1, 1, 1, COBYLA local fit tol=5e-6 successfully, starting from good values: 0.7, 2., 0.1, 0.4
                         exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
-
+                elif new_data == 2:
+                    print('Not fitted newest data with onlyexploration_nolearning_during_testing = False')
+                    sys.exit()
                 else: # params for fits to older data (only for control vs exp time to perfect switch)
                     if num_params_to_fit == 2:
                         ##### obtained by 2-param fit -- note: switching rate is at the border of allowed, so redo
@@ -333,7 +342,7 @@ if __name__ == "__main__":
     #ACC_off = True
     ACC_off = False
     if ACC_off:
-        # inhibited ACC, param obtained by fitting below 2 params (rest default 4-param fit) to ACC on (control) old data (new_data=False)
+        # inhibited ACC, param obtained by fitting below 2 params (rest default 4-param fit) to ACC on (control) old data (new_data==0)
         ACC_off_factor_visual = 0.212
         ACC_off_factor_odor = 0.674
         ACC_str = 'exp'
@@ -347,24 +356,34 @@ if __name__ == "__main__":
     #fit_rewarded_stimuli_only = True
     fit_rewarded_stimuli_only = False
 
+    # 2023 May update - added this flag for gym env to simulate a minor mod to the experiment to satisfy reviewers
+    #first_V2O_visual_is_irrelV2 = False
+    first_V2O_visual_is_irrelV2 = True
+
     # whether to use parameters obtained by fitting to:
-    #  old (has ACC-on/control and ACC-off/exp) data,
-    #  or new (behaviour+neural w/ only ACC-on) data.
-    new_data = True
-    #new_data = False
-    if new_data and ACC_off:
+    #  0 = old (has ACC-on/control and ACC-off/exp) data, or
+    #  1 = new (behaviour+neural w/ only ACC-on) data, or
+    #  2 = newest data with 4 sessions (having 1st cue after V2O as unrewarded V2) prepended to above 1 (= new data).
+    #new_data = 0
+    #new_data = 1
+    new_data = 2
+    if new_data == 0 and ACC_off:
         print('New (behaviour+neural) data does not have data for ACC off i.e. exp condition.')
         sys.exit(1)
-    if new_data:
+    if new_data == 1:
         # override the data to newest one, for fitting behaviour in 'control' (ACC on) condition
-        #  'exp' (ACC off) behaviour has not been recorded in newest version,
-        #   so use older data i.e. do not override it..
+        # can choose any one of the below
         mouse_behaviour_data = mouse_behaviour_for_neural_data
+    elif new_data == 2:
+        # 2023 May update: 'newest' data with 4 sessions having 1st cue after V2O as unrewarded V2, (in my environment first_V2O_visual_is_irrelV2==True)
+        #                   prepended to rest 13 sessions of 'new' data above, having 1st visual cue after V2O as unrewarded V1 (first_V2O_visual_is_irrelV2==False)
+        mouse_behaviour_data = mouse_behaviour_data_newest
     
     for seed in seeds:
         # Instantiate the env and the agent
         env, agent, steps, params_all = get_env_agent(agent_type, ACC_off_factor_visual, ACC_off_factor_odor, seed=seed,
-                                                     num_params_to_fit=num_params_to_fit, new_data=new_data)
+                                                     num_params_to_fit=num_params_to_fit, new_data=new_data,
+                                                     first_V2O_visual_is_irrelV2=first_V2O_visual_is_irrelV2)
         onlyexploration_nolearning_during_testing = params_all[2]
 
         agent.reset()
@@ -379,7 +398,7 @@ if __name__ == "__main__":
 
         savefilenamebase = 'simulation_data/simdata_'+agent_type+'_numparams'+str(num_params_to_fit)+\
                              ('_nolearnwithexplore' if onlyexploration_nolearning_during_testing else '') +'_ACC'+ACC_str
-        savefilenamebase2 = savefilenamebase + ('_newdata' if new_data else '')
+        savefilenamebase2 = savefilenamebase + ( '_newdata' if new_data==1 else ('_newdata2' if new_data==2 else '') )
         savefilename = savefilenamebase2 + '_seed'+str(seed)+'.mat'
         print('Saving to',savefilename)
         # params_all is a 'ragged' tuple with different dtypes (including NoneType),

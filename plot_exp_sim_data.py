@@ -12,7 +12,7 @@ import scipy.stats
 import sys
 
 from exp_data_analysis import get_exp_reward_around_transition, \
-    mouse_behaviour_data,mouse_neural_data,mouse_behaviour_for_neural_data
+    mouse_behaviour_data,mouse_behaviour_data_newest,mouse_neural_data,mouse_behaviour_for_neural_data
 from utils import rootmeansquarederror,  process_transitions, get_switchtimes
 from plot_simulation_data import load_simdata_seeds, plot_mismatch_vs_perfectswitch
 
@@ -119,7 +119,7 @@ def plot_prob_actions_given_stimuli(probability_action_given_stimulus,
 
 def load_plot_expsimdata(filenamebase,seeds,new_data,mouse_behaviour_data):
 
-    filenamebase += ('_newdata' if new_data else '')
+    filenamebase += ( '_newdata' if new_data==1 else ('_newdata2' if new_data==2 else'') )
 
     exp_steps, ACC_str, agent_type,\
         fit_rewarded_stimuli_only,\
@@ -131,8 +131,8 @@ def load_plot_expsimdata(filenamebase,seeds,new_data,mouse_behaviour_data):
         context_record,\
         mismatch_error_record = load_simdata_seeds(filenamebase,seeds)
 
-    if new_data and ACC_str=='exp':
-        print('New (behaviour+neural) data does not have data for ACC off i.e. exp condition.')
+    if (new_data in (1,2)) and ACC_str=='exp':
+        print('New/newest (behaviour+neural) data does not have data for ACC off i.e. exp condition.')
         sys.exit(1)
 
     detailed_plots = False
@@ -264,8 +264,10 @@ if __name__ == "__main__":
     seeds = [1]
 
     ## choose one of the below:
-    ## use mouse_behaviour_for_neural_data instead mouse_behaviour_data when new_data (second last arg) is True.
-    #load_plot_expsimdata('simulation_data/simdata_belief_numparams4_ACCcontrol',seeds,True,mouse_behaviour_for_neural_data) # BeliefRL, ACC on/normal
-    load_plot_expsimdata('simulation_data/simdata_belief_numparams4_ACCexp',seeds,False,mouse_behaviour_data) # BeliefRL, ACC off
-    #load_plot_expsimdata('simulation_data/simdata_basic_numparams2_ACCcontrol',seeds,True,mouse_behaviour_for_neural_data) # BasicRL, ACC on
+    ## use mouse_behaviour_for_neural_data instead mouse_behaviour_data when setting new_data (second last arg) == 1,
+    ##  or mouse_behaviour_data_newest when setting new_data == 2, or mouse_behaviour_data when setting new_data == 0..
+    ##load_plot_expsimdata('simulation_data/simdata_belief_numparams4_ACCcontrol',seeds,1,mouse_behaviour_for_neural_data) # BeliefRL, ACC on/normal
+    load_plot_expsimdata('simulation_data/simdata_belief_numparams4_ACCcontrol',seeds,2,mouse_behaviour_data_newest) # BeliefRL, ACC on/normal
+    #load_plot_expsimdata('simulation_data/simdata_belief_numparams4_ACCexp',seeds,0,mouse_behaviour_data) # BeliefRL, ACC off
+    #load_plot_expsimdata('simulation_data/simdata_basic_numparams2_ACCcontrol',seeds,1,mouse_behaviour_for_neural_data) # BasicRL, ACC on
 

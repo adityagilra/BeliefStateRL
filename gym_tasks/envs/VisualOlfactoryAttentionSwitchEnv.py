@@ -96,6 +96,7 @@ class VisualOlfactoryAttentionSwitchEnv(Env):
         self.consecutive_ignore_irrelevant_visual = 0
 
         self.trial_number = 0
+        self.trial_number_from_start_of_block = 0
         self.trial_number_in_block = 0
         self.shaping_trials_correct = 0
         self.time_index = 0
@@ -187,6 +188,7 @@ class VisualOlfactoryAttentionSwitchEnv(Env):
         if self.done_trial:
             self.done_trial = False
             self.trial_number += 1
+            self.trial_number_from_start_of_block += 1
             if self.shaping_trials_correct >= 3:
                 self.trial_number_in_block += 1
             self.time_index = 0
@@ -211,6 +213,7 @@ class VisualOlfactoryAttentionSwitchEnv(Env):
                 self.consecutive_ignore_irrelevant_visual = 0
                 self.trial_number_in_block = 0
                 self.shaping_trials_correct = 0
+                self.trial_number_from_start_of_block = 0
 
         # set default variables, unless changed in _step()
         self.reward = 0

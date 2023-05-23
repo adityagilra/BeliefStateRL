@@ -300,9 +300,15 @@ def simulate_and_mse(parameters,
                     agent_type, agent, steps,
                     transitions_actionscount_to_stimulus_o2v,
                     transitions_actionscount_to_stimulus_v2o,
+                    transitions_actionscount_to_stimulus_o2v_newest,
+                    transitions_actionscount_to_stimulus_v2o_newest,
                     fit_rewarded_stimuli_only, num_params_to_fit,
                     half_window, seeds, k_idx, k_validation, ACC_off=False, test=False):
     print("Training agent with parameters = ",parameters)
+    if transitions_actionscount_to_stimulus_o2v_newest is None:
+        fit_newest = False
+    else:
+        fit_newest = True # 2023 May update: need to fit ~4/17 seeds to newest data, ~13/17 seeds to new data
     num_seeds = len(seeds)
     rmses = np.zeros(num_seeds)
     # compute rmse for each seed and take mean of rmses across seeds.
@@ -310,7 +316,17 @@ def simulate_and_mse(parameters,
         print('Simulation and RMSE computation for agent with seed =',seed,
                             'and fold =',k_idx+1,'of',k_validation,'folds.')
         agent.seed = seed
-        agent.reset() # also resets seeds of agent and env
+        if fit_newest: 
+            # need to fit ~4/17 seeds to modified env and newest data, ~13/17 seeds to usual env and new data
+            # modifying the environment here
+            if seed_idx <= np.round(num_seeds*4./17.):
+                agent.env.first_V2O_visual_is_irrelV2 = True
+            else:
+                agent.env.first_V2O_visual_is_irrelV2 = False
+        else:
+            agent.env.first_V2O_visual_is_irrelV2 = False
+        print('For seed=',seed,', I am using the version of task with first_V2O_visual_is_irrelV2 =',agent.env.first_V2O_visual_is_irrelV2)
+        agent.reset() # also resets seeds of agent and env, and of course resets agent and env
 
         if agent_type == 'belief':
             if not ACC_off:
@@ -386,7 +402,15 @@ def simulate_and_mse(parameters,
                                     context_record, mismatch_error_record,
                                     O2V = False, half_window=half_window)
 
-        rmses[seed_idx] = rootmeansquarederror(transitions_actionscount_to_stimulus_o2v,
+        if fit_newest and agent.env.first_V2O_visual_is_irrelV2 == True:
+            rmses[seed_idx] = rootmeansquarederror(transitions_actionscount_to_stimulus_o2v_newest,
+                                transitions_actionscount_to_stimulus_v2o_newest,
+                                probability_action_given_stimulus_o2v,
+                                probability_action_given_stimulus_v2o,
+                                fit_rewarded_stimuli_only, num_params_to_fit,
+                                fold_num=k_idx, num_folds=k_validation, test=test)
+        else:
+            rmses[seed_idx] = rootmeansquarederror(transitions_actionscount_to_stimulus_o2v,
                                 transitions_actionscount_to_stimulus_v2o,
                                 probability_action_given_stimulus_o2v,
                                 probability_action_given_stimulus_v2o,
