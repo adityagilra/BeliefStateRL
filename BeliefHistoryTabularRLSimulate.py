@@ -72,9 +72,17 @@ def get_env_agent(agent_type='belief', ACC_off_factor_visual=1., ACC_off_factor_
                 epsilon, alpha, unrewarded_visual_exploration_rate \
                         = 0.27232708, 0.74221187, 0.32848218 # fit p(lick|stimuli) for all stimuli # exploration on during testing # fitted successfully with mean rmse = 0.14638095502159895 across 5 seeds fitting all data using reward structure 1, 1, 1, COBYLA local fit tol=5e-6
                 params_all = ((epsilon, alpha, unrewarded_visual_exploration_rate), learning_during_testing)
-        elif new_data == 2:
-            print('Not fitted BasicRL with newest data.')
-            sys.exit()
+        elif new_data == 2: # 2023 May update, fit to newest data
+            if num_params_to_fit == 2: # not fitted yet, copied params from above new_data=1
+                epsilon, alpha = 0.25004935, 0.9 # fit p(lick|stimuli) for all stimuli # exploration on during testing # fitted successfully with mean rmse = 0.1439542839678069 across 5 seeds fitting all data using reward structure 1, 1, 1, COBYLA local fit tol=5e-6
+                # setting below to None will make it not be used
+                unrewarded_visual_exploration_rate = None
+                params_all = ((epsilon, alpha), learning_during_testing)
+            else:
+                ### 3-param fit # not fitted yet, copied params from above new_data=1
+                epsilon, alpha, unrewarded_visual_exploration_rate \
+                        = 0.27232708, 0.74221187, 0.32848218 # fit p(lick|stimuli) for all stimuli # exploration on during testing # fitted successfully with mean rmse = 0.14638095502159895 across 5 seeds fitting all data using reward structure 1, 1, 1, COBYLA local fit tol=5e-6
+                params_all = ((epsilon, alpha, unrewarded_visual_exploration_rate), learning_during_testing)
         else: # params for fits to older data (only for control vs exp time to perfect switch)
             if num_params_to_fit == 2:
                 ### 2-param fit using brute to minimize mse,
@@ -210,7 +218,7 @@ def get_env_agent(agent_type='belief', ACC_off_factor_visual=1., ACC_off_factor_
                 if new_data == 1:     # new data only ACC on
                     if num_params_to_fit == 4:
                         belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
-                                    = 0.70793119, 2.00387391, 0.07433045, 0.29471044 # fitted on 2023-04-14
+                                    = 0.70793119, 2.00387391, 0.07433045, 0.29471044 # fitted on 2022-04-14
                         exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
                     else:
                         print('Have not fitted new data with onlyexploration_nolearning_during_testing=True and num_params_to_fit <> 4. Set to False or =4 resp. and run.')
@@ -218,7 +226,7 @@ def get_env_agent(agent_type='belief', ACC_off_factor_visual=1., ACC_off_factor_
                 elif new_data == 2:
                     if num_params_to_fit == 4: # not yet fitted, just copied from above
                         belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
-                                    = 0.70793119, 2.00387391, 0.07433045, 0.29471044 # fitted on 2023-04-14
+                                    = 0.7451769 , 1.96213482, 0.07403778, 0.31073104 # fitted on 2023-05-23
                         exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
                 else:            # old data with ACC-on and ACC-off
                     print('Have not fitted old data (ACC on vs off) with onlyexploration_nolearning_during_testing=True. Set to False and run.')

@@ -33,11 +33,14 @@ if __name__ == "__main__":
 
     ## cross-validation is set for COBLYA fitting
     # how many fold cross-validation
-    #k_validation = 5 # how many fold cross-validation
-    k_validation = 1 # no cross-validation, train and test on all data
+    k_validation = 5 # how many fold cross-validation
+    #k_validation = 1 # no cross-validation, train and test on all data
     # number of seeds used per mse calculation given params
     if k_validation > 1:
-        seeds = (1,) # less computation when using cross-validation
+        #seeds = (1,) # less computation when using cross-validation
+        seeds = (1,2,3,4,5) # having all 5 seeds
+                            #  since the newest data fits first 2 seeds to modified environment with V2 shown in 1st trial of V2O transition
+                            #  and rest 3 seeds to environment with V1 shown.
     else:
         seeds = (1,2,3,4,5)
     

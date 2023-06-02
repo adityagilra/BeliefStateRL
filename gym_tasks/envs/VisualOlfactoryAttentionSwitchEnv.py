@@ -1,7 +1,8 @@
 '''
 A belief state RL task from the lab of Adil Ghani Khan.
 
-Version 0:
+Version 0: 
+We're using VisualOlfactoryAttentionSwitchNoBlankEnv which inherits from this but modifies _step()
 
 Block Visual:
 3 time steps in a trial:
