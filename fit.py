@@ -33,12 +33,12 @@ if __name__ == "__main__":
 
     ## cross-validation is set for COBLYA fitting
     # how many fold cross-validation
-    k_validation = 5 # how many fold cross-validation
-    #k_validation = 1 # no cross-validation, train and test on all data
+    #k_validation = 5 # how many fold cross-validation
+    k_validation = 1 # no cross-validation, train and test on all data
     # number of seeds used per mse calculation given params
     if k_validation > 1:
         #seeds = (1,) # less computation when using cross-validation
-        seeds = (1,2,3,4,5) # having all 5 seeds
+        seeds = (1,2,3,4,5) # simulate with 5 seeds
                             #  since the newest data fits first 2 seeds to modified environment with V2 shown in 1st trial of V2O transition
                             #  and rest 3 seeds to environment with V1 shown.
     else:
@@ -61,7 +61,7 @@ if __name__ == "__main__":
     #new_data = 0
     #new_data = 1
     new_data = 2
-    if new_data == 1 and ACC_off:
+    if new_data in (1,2) and ACC_off:
         print('New (behaviour+neural) data does not have data for ACC off i.e. exp condition.')
         sys.exit(1)
     # override the data to newest one, for fitting behaviour in 'control' (ACC on) condition
@@ -202,7 +202,7 @@ if __name__ == "__main__":
             exploration_rate_start = 0.2
             learning_rate_start = 0.9
             parameters = (exploration_rate_start, learning_rate_start)
-            ranges = ((0.1,0.5),(0.1,0.9))
+            ranges = ((0.1,0.5),(0.1,1.0))
             #bounds_obj = Bounds((0.,0.),(1.,1.))
         elif num_params_to_fit == 3:
             exploration_rate_start = 0.2

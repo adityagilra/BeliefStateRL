@@ -49,7 +49,7 @@ def get_env_agent(agent_type='belief', ACC_off_factor_visual=1., ACC_off_factor_
     # this is for historical reasons, otherwise I could have had boolean flags for just exploration and just learning,
     # though of course learning (by reinforcement) needs exploration, which partly explains this choice of flags.
 
-    onlyexploration_nolearning_during_testing = False
+    onlyexploration_nolearning_during_testing = False     # used only for beliefRL, this is overridden below in some cases.
 
     # instantiate the RL agent either with history or belief
     # choose one of the below:
@@ -213,6 +213,7 @@ def get_env_agent(agent_type='belief', ACC_off_factor_visual=1., ACC_off_factor_
 
             # onlyexploration_nolearning_during_testing = True overrides learning_during_testing = True in the model
             onlyexploration_nolearning_during_testing = True
+            #onlyexploration_nolearning_during_testing = False
 
             if onlyexploration_nolearning_during_testing:
                 if new_data == 1:     # new data only ACC on
@@ -223,14 +224,32 @@ def get_env_agent(agent_type='belief', ACC_off_factor_visual=1., ACC_off_factor_
                     else:
                         print('Have not fitted new data with onlyexploration_nolearning_during_testing=True and num_params_to_fit <> 4. Set to False or =4 resp. and run.')
                         sys.exit()
-                elif new_data == 2:
-                    if num_params_to_fit == 4: # not yet fitted, just copied from above
-                        belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
-                                    = 0.7451769 , 1.96213482, 0.07403778, 0.31073104 # fitted on 2023-05-23
+
+                elif new_data == 2: # newest data
+                    if num_params_to_fit == 2:
+                        ##### obtained by 2-param fit -- to do
+                        belief_switching_rate, context_error_noiseSD_factor \
+                                    = 0.43417968, 4.13535097 # fit p(lick|stimuli) for all 4 stimuli # exploration on
+                        epsilon, exploration_add_factor_for_context_uncertainty, alpha \
+                                    = 0.1, 0, 0.1
+                    elif num_params_to_fit == 3:
+                        ##### obtained by 3-param fit --- to do
+                        belief_switching_rate, context_error_noiseSD_factor, epsilon \
+                                    = 0.3172727, 4.61738219, 0.01069627
                         exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
-                else:            # old data with ACC-on and ACC-off
-                    print('Have not fitted old data (ACC on vs off) with onlyexploration_nolearning_during_testing=True. Set to False and run.')
-                    sys.exit()
+                    elif num_params_to_fit == 4: # fitted on 02 June 2023
+                        belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
+                                    = 0.68581194, 1.99719708, 0.04915091, 0.27954801 # fitted on 2023-06-02
+                        exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
+
+                else:       # old data with ACC-on and ACC-off
+                    if num_params_to_fit == 4:  # to fit 
+                        belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
+                                    = 0.70793119, 2.00387391, 0.07433045, 0.29471044 # fitted on 2022-04-14
+                        exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
+                    else:
+                        print('Have not fitted new data with onlyexploration_nolearning_during_testing=True and num_params_to_fit != 4. Set to False or =4 resp. and run.')
+                        sys.exit()
 
             else:        # onlyexploration_nolearning_during_testing = False
 
@@ -246,14 +265,22 @@ def get_env_agent(agent_type='belief', ACC_off_factor_visual=1., ACC_off_factor_
                         belief_switching_rate, context_error_noiseSD_factor, epsilon \
                                     = 0.3172727, 4.61738219, 0.01069627
                         exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
-                    if num_params_to_fit == 4:
+                    elif num_params_to_fit == 4:
                         ##### obtained by 4-param fit
                         belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
                                     = 0.69528583, 2.0606016 , 0.07528155, 0.32492735  # fit p(lick|stimuli) for all 4 stimuli # exploration on during testing, & context_sampling=False # rmse = 0.07508711274249896 across 5 seeds fitting all data using reward structure 1, 1, 1, COBYLA local fit tol=5e-6 successfully, starting from good values: 0.7, 2., 0.1, 0.4
                         exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
-                elif new_data == 2:
-                    print('Not fitted newest data with onlyexploration_nolearning_during_testing = False')
-                    sys.exit()
+
+                elif new_data == 2:    # newest data
+                    if num_params_to_fit == 4:
+                        ##### obtained by 4-param fit -- to do
+                        belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
+                                    = 0.69528583, 2.0606016 , 0.07528155, 0.32492735 
+                        exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
+                    else:
+                        print('Have not fitted newest data with onlyexploration_nolearning_during_testing=False and num_params_to_fit != 4. Set to False or =4 resp. and run.')
+                        sys.exit()
+
                 else: # params for fits to older data (only for control vs exp time to perfect switch)
                     if num_params_to_fit == 2:
                         ##### obtained by 2-param fit -- note: switching rate is at the border of allowed, so redo
@@ -333,8 +360,8 @@ if __name__ == "__main__":
     seeds = [1]
 
     ############## choose / uncomment one of the agents below! #################
-    agent_type='belief'
-    #agent_type='basic'
+    #agent_type='belief'
+    agent_type='basic'
 
     if agent_type == 'basic':
         # choose one of the below
@@ -392,8 +419,6 @@ if __name__ == "__main__":
         env, agent, steps, params_all = get_env_agent(agent_type, ACC_off_factor_visual, ACC_off_factor_odor, seed=seed,
                                                      num_params_to_fit=num_params_to_fit, new_data=new_data,
                                                      first_V2O_visual_is_irrelV2=first_V2O_visual_is_irrelV2)
-        onlyexploration_nolearning_during_testing = params_all[2]
-
         agent.reset()
         
         # train the RL agent on the task
@@ -404,6 +429,8 @@ if __name__ == "__main__":
 
         print('Q-values dict {state: context x action} = ',agent.Q_array)
 
+        if 'basic' in agent_type: onlyexploration_nolearning_during_testing = None
+        else: onlyexploration_nolearning_during_testing = params_all[2]
         savefilenamebase = 'simulation_data/simdata_'+agent_type+'_numparams'+str(num_params_to_fit)+\
                              ('_nolearnwithexplore' if onlyexploration_nolearning_during_testing else '') +'_ACC'+ACC_str
         savefilenamebase2 = savefilenamebase + ( '_newdata' if new_data==1 else ('_newdata2' if new_data==2 else '') )
