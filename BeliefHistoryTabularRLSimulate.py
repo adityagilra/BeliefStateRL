@@ -73,8 +73,8 @@ def get_env_agent(agent_type='belief', ACC_off_factor_visual=1., ACC_off_factor_
                         = 0.27232708, 0.74221187, 0.32848218 # fit p(lick|stimuli) for all stimuli # exploration on during testing # fitted successfully with mean rmse = 0.14638095502159895 across 5 seeds fitting all data using reward structure 1, 1, 1, COBYLA local fit tol=5e-6
                 params_all = ((epsilon, alpha, unrewarded_visual_exploration_rate), learning_during_testing)
         elif new_data == 2: # 2023 May update, fit to newest data
-            if num_params_to_fit == 2: # not fitted yet, copied params from above new_data=1
-                epsilon, alpha = 0.25004935, 0.9 # fit p(lick|stimuli) for all stimuli # exploration on during testing # fitted successfully with mean rmse = 0.1439542839678069 across 5 seeds fitting all data using reward structure 1, 1, 1, COBYLA local fit tol=5e-6
+            if num_params_to_fit == 2: # fitted 2023-06-02
+                epsilon, alpha = 0.23633065, 0.9 # fit p(lick|stimuli) for all stimuli # exploration on during testing # fitted successfully with mean rmse = 0.15848826053560755 across 5 seeds fitting all data using reward structure 1, 1, 1, COBYLA local fit tol=5e-6
                 # setting below to None will make it not be used
                 unrewarded_visual_exploration_rate = None
                 params_all = ((epsilon, alpha), learning_during_testing)
@@ -243,9 +243,9 @@ def get_env_agent(agent_type='belief', ACC_off_factor_visual=1., ACC_off_factor_
                         exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
 
                 else:       # old data with ACC-on and ACC-off
-                    if num_params_to_fit == 4:  # to fit 
+                    if num_params_to_fit == 4:  # fitted on 2023-06-06
                         belief_switching_rate, context_error_noiseSD_factor, epsilon, unrewarded_visual_exploration_rate \
-                                    = 0.70793119, 2.00387391, 0.07433045, 0.29471044 # fitted on 2022-04-14
+                                    = 0.76983894, 1.98659444, 0.10722383, 0.45156442
                         exploration_add_factor_for_context_uncertainty, alpha = 0, 0.1
                     else:
                         print('Have not fitted new data with onlyexploration_nolearning_during_testing=True and num_params_to_fit != 4. Set to False or =4 resp. and run.')
@@ -355,27 +355,82 @@ def get_env_agent(agent_type='belief', ACC_off_factor_visual=1., ACC_off_factor_
 
 if __name__ == "__main__":
 
-    # chooses one the below to repeat sims over seeds
-    #seeds = [1,2,3,4,5]
-    seeds = [1]
+    print("""
+=========================================================================================================
+Usage: 
+python BeliefHistoryTabularRLSimulate.py <belief|basic> <True|False> <0|1|2>
+belief|basic are to use BeliefStateRL or BasicRL agent.
+True|False is refers to ACC being off i.e. inhibited (True) versus on (False).
+0|1|2 refers to using different datasets:
+ 0 is a dataset on older task with ACC on and off conditions,
+           used for ACC on vs off switching times comparisons
+ 1 is a dataset on older task with only ACC on having 13 sessions, this is the dataset with neural recordings as well
+          used for mismatch of context error signals between fast vs slow switches, on old task only
+          This dataset 1 is obsolete for simulation purposes, as it is incorporated into dataset 2 as below.
+ 2 is a dataset, with only ACC on condition, of 4 sessions on newer task (having 1st cue after V2O as unrewarded V2),  
+            prepended to the above 13 sessions of dataset 1 (on older task having 1st cue after V2O as unrewarded V1)  
+          used for comparing Belief State RL vs Basic RL, on new and old tasks in 4:13 ratio
+
+This script does not fit params,
+ rather it simulates the agent setting params which were fitted already using fit.py for each of the specifications above.
+These params are already hardcoded into BeliefHistoryTabularRLSimulate.py for various specifications,
+    so no need to run fit.py unless you want to re-fit.
+
+---------------------------------------------------------------------------------------------------------
+For Fig 1G and Suppl. Fig 7G, run (ACC_off=False and new_data=2):
+python BeliefHistoryTabularRLSimulate.py belief False 2
+for BeliefStateRL,
+or
+python BeliefHistoryTabularRLSimulate.py basic False 2
+for BasicRL.
+---------------------------------------------------------------------------------------------------------
+All runs of BeliefHistoryTabularRLSimulate.py will show plots in 2 batches (2 plt.show()s) at the end of the simulations,
+ but you can re-plot the saved files later using plot_simulation_data.py (only simulated data)
+  or plot_exp_sim_data.py (sim data overlaid on exp data).
+Comment/uncomment the relevant lines in __main__ there, e.g.:
+load_plot_simdata('simulation_data/simdata_belief_numparams4_nolearnwithexplore_ACCcontrol_newdata2',seeds)
+---------------------------------------------------------------------------------------------------------
+For Fig 6C, ensure that you have earlier run:
+python BeliefHistoryTabularRLSimulate.py belief False 2
+then uncomment in plot_simulation_data.py:
+load_plot_simdata('simulation_data/simdata_belief_numparams4_nolearnwithexplore_ACCcontrol_newdata2',seeds=[2])
+comment other plotting lines, and run.
+---------------------------------------------------------------------------------------------------------
+For Suppl Fig 2D (uses older dataset, hence 0, that has ACC off and on), run 
+python BeliefHistoryTabularRLSimulate.py belief True 0
+and
+python BeliefHistoryTabularRLSimulate.py belief False 0
+then comment/uncomment the correct plotting lines in plot_simulation_data.py and run.
+=========================================================================================================
+    """)
+
+    if len(sys.argv)!=4:
+        print('Error! Provide command line arguments. See usage above.')
+        sys.exit()
 
     ############## choose / uncomment one of the agents below! #################
     #agent_type='belief'
-    agent_type='basic'
+    #agent_type='basic'
+    agent_type = sys.argv[1]
 
     if agent_type == 'basic':
         # choose one of the below
         num_params_to_fit = 2 # for both basic and belief RL
         #num_params_to_fit = 3 # for both basic and belief RL
-    else:
+    elif agent_type == 'belief':
         # choose one of the below
         #num_params_to_fit = 2 # for both basic and belief RL
         #num_params_to_fit = 3 # for both basic and belief RL
         num_params_to_fit = 4 # only for belief RL
+    else:
+        print('Set agent_type i.e. argv[1] as belief or basic.')
+        sys.exit()
         
     # choose whether ACC is inhibited or not
     #ACC_off = True
-    ACC_off = False
+    #ACC_off = False
+    ACC_off = ( sys.argv[2].lower() in ('true','t','y') )
+
     if ACC_off:
         # inhibited ACC, param obtained by fitting below 2 params (rest default 4-param fit) to ACC on (control) old data (new_data==0)
         ACC_off_factor_visual = 0.212
@@ -391,35 +446,61 @@ if __name__ == "__main__":
     #fit_rewarded_stimuli_only = True
     fit_rewarded_stimuli_only = False
 
-    # 2023 May update - added this flag for gym env to simulate a minor mod to the experiment to satisfy reviewers
-    #first_V2O_visual_is_irrelV2 = False
-    first_V2O_visual_is_irrelV2 = True
-
     # whether to use parameters obtained by fitting to:
     #  0 = old (has ACC-on/control and ACC-off/exp) data, or
     #  1 = new (behaviour+neural w/ only ACC-on) data, or
     #  2 = newest data with 4 sessions (having 1st cue after V2O as unrewarded V2) prepended to above 1 (= new data).
-    #new_data = 0
-    #new_data = 1
-    new_data = 2
-    if new_data == 0 and ACC_off:
-        print('New (behaviour+neural) data does not have data for ACC off i.e. exp condition.')
+    #new_data = 0 # for ACC on vs off switching times comparisons, on old task only
+    #new_data = 1 # for mismatch of context error signals between fast vs slow switches, on old task only
+    #new_data = 2 # for comparing Belief State RL vs Basic RL (params fitted on this data using fit.py), on new and old tasks in 4:13 ratio
+    new_data = int(sys.argv[3])
+
+    print('Simulating using fitted params for agent_type =',agent_type,', ACC_off =',ACC_off,', new_data =',new_data,'.')
+
+    if new_data != 0 and ACC_off:
+        print('New (behaviour+neural) and newest data, i.e. new_data in (1,2), do not have data for ACC off i.e. exp condition.')
         sys.exit(1)
+
+    if new_data == 0:
+        # mouse_behaviour_data remains as imported above, only this dataset has 'control' (ACC on) and 'exp' (ACC off) conditions
+        # choose one of the below to repeat sims over seeds
+        seeds = [1]
+        #seeds = [1,2,3,4,5]
     if new_data == 1:
-        # override the data to newest one, for fitting behaviour in 'control' (ACC on) condition
-        # can choose any one of the below
-        mouse_behaviour_data = mouse_behaviour_for_neural_data
+        # override the data to 'new' one, whose all 13 sessions are on older task (first_V2O_visual_is_irrelV2==False)
+        #  -- this is now obsolete as this data is merged into new_data below
+        mouse_behaviour_data = mouse_behaviour_for_neural_data # this is only used below to plot the comparison to experiments
+        # choose one of the below to repeat sims over seeds
+        seeds = [1]
+        #seeds = [1,2,3,4,5]
     elif new_data == 2:
         # 2023 May update: 'newest' data with 4 sessions having 1st cue after V2O as unrewarded V2, (in my environment first_V2O_visual_is_irrelV2==True)
         #                   prepended to rest 13 sessions of 'new' data above, having 1st visual cue after V2O as unrewarded V1 (first_V2O_visual_is_irrelV2==False)
-        mouse_behaviour_data = mouse_behaviour_data_newest
-    
-    for seed in seeds:
+        mouse_behaviour_data = mouse_behaviour_data_newest # this is only used below to plot the comparison to experiments
+        # Have at least 5 seeds since we fitted first 2 seeds to modified environment with V2 shown in 1st trial of V2O transition (modified task)
+        #  and rest 3 seeds to environment with V1 shown (older task), more generally seeds are split across tasks in the proportion 4:13 (see below).
+        seeds = [1,2,3,4,5]
+    print('Simulating for seeds',seeds)
+
+    for seed_idx,seed in enumerate(seeds):
+
+        # 2023 May update - added this flag first_V2O_visual_is_irrelV2 for gym env to simulate the mod to the experiment leading to new_data=2
+        if new_data in (0,1):
+            first_V2O_visual_is_irrelV2 = False
+        else: # new_data == 2
+            # need to fit ~4/17 seeds to modified env and newest data, ~13/17 seeds to usual env and new data
+            # effectively, use modified environment for 2 seeds and older one for 3 seeds, out of 5 total seeds
+            if seed_idx <= np.round(len(seeds)*4./17.):
+                first_V2O_visual_is_irrelV2 = True
+            else:
+                first_V2O_visual_is_irrelV2 = False
+
         # Instantiate the env and the agent
         env, agent, steps, params_all = get_env_agent(agent_type, ACC_off_factor_visual, ACC_off_factor_odor, seed=seed,
                                                      num_params_to_fit=num_params_to_fit, new_data=new_data,
                                                      first_V2O_visual_is_irrelV2=first_V2O_visual_is_irrelV2)
         agent.reset()
+        print('For seed=',seed,', I am using the version of task with first_V2O_visual_is_irrelV2 =',agent.env.first_V2O_visual_is_irrelV2)
         
         # train the RL agent on the task
         exp_step, block_vector_exp_compare, \

@@ -260,14 +260,11 @@ def load_plot_expsimdata(filenamebase,seeds,new_data,mouse_behaviour_data):
 if __name__ == "__main__":
 
     # chooses one the below to average sim data over seeds
-    #seeds = [1,2,3,4,5]
-    seeds = [1]
+    seeds = [1,2,3,4,5]
+    #seeds = [1]
 
     ## choose one of the below:
     ## use mouse_behaviour_for_neural_data instead mouse_behaviour_data when setting new_data (second last arg) == 1,
-    ##  or mouse_behaviour_data_newest when setting new_data == 2, or mouse_behaviour_data when setting new_data == 0..
-    ##load_plot_expsimdata('simulation_data/simdata_belief_numparams4_ACCcontrol',seeds,1,mouse_behaviour_for_neural_data) # BeliefRL, ACC on/normal
-    load_plot_expsimdata('simulation_data/simdata_belief_numparams4_ACCcontrol',seeds,2,mouse_behaviour_data_newest) # BeliefRL, ACC on/normal
-    #load_plot_expsimdata('simulation_data/simdata_belief_numparams4_ACCexp',seeds,0,mouse_behaviour_data) # BeliefRL, ACC off
-    #load_plot_expsimdata('simulation_data/simdata_basic_numparams2_ACCcontrol',seeds,1,mouse_behaviour_for_neural_data) # BasicRL, ACC on
+    ##  or mouse_behaviour_data_newest when setting new_data == 2, or mouse_behaviour_data when setting new_data == 0.
+    load_plot_expsimdata('simulation_data/simdata_belief_numparams4_nolearnwithexplore_ACCcontrol',seeds,2,mouse_behaviour_data_newest) # BeliefRL, ACC on/normal
 

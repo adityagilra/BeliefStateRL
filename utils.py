@@ -79,13 +79,13 @@ def process_transitions(exp_steps, block_vector_exp_compare,
             # for stimuli 3-6 (olfactory block) need to collapse steps into trials
             trialnum = 0
             # go from transition towards olfactory steps / trials, need to align transitions
-            if O2V: stepnums = range(transition,window_min,-1)
-            else: stepnums = range(transition,window_max)
+            if O2V: stepnums = range(transition-1,window_min,-1) # first step at transition is of Vis. block, transition-1 is last step of Olf. block
+            else: stepnums = range(transition,window_max) # first step at transition is of Olf. block.
             for stepnum in stepnums:
                 stimulus = stimulus_vector_exp_compare[stepnum]
                 if stimulus in [5,6]: # olfactory stimulus
-                    if O2V: windownum = half_window-trialnum
-                    else: windownum = half_window+trialnum
+                    if O2V: windownum = half_window-trialnum-1 # first trial at half_window is of Vis. block, hence -1 offset for Olf. block
+                    else: windownum = half_window+trialnum # first trial at half_window is of Olf. block
                     actionscount_to_stimulus_bytrials[ int(stimulus-1), windownum, \
                                                         int(action_vector_exp_compare[stepnum]) ] += 1
                     # was there a visual stimulus of the olfactory block before this?
@@ -102,7 +102,7 @@ def process_transitions(exp_steps, block_vector_exp_compare,
                 second_trial_idx = transition + 1
                 correct_action = 1
             else:
-                # first 3 trials after V2O transition always have rewarded visual then odor
+                # at least 3 trials after V2O transition always have visual cue in step 1 then odor in step 2
                 second_trial_idx = transition + 2
                 correct_action = 0
             # error in both contexts is taken into account -- np.abs() to neglect direction information
@@ -142,7 +142,8 @@ def process_transitions(exp_steps, block_vector_exp_compare,
                 context, mismatch_error, mismatch_by_perfectswitch
 
 def get_switchtimes(O2V, window, exp_step, block_vector_exp_compare,
-                 stimulus_vector_exp_compare, action_vector_exp_compare):
+                 stimulus_vector_exp_compare, action_vector_exp_compare,
+                 first_V2O_visual_is_irrelV2):
     # exp_step is the last step saved
     transitions = \
         np.where(np.diff(block_vector_exp_compare[:exp_step])==(-1 if O2V else 1))[0] + 1
@@ -163,7 +164,9 @@ def get_switchtimes(O2V, window, exp_step, block_vector_exp_compare,
             tidx = transition+idx
             if tidx < exp_step:
                 #print(tidx,stimulus_vector_exp_compare[tidx])
-                if stimulus_vector_exp_compare[tidx] == rewarded_visual:
+                if stimulus_vector_exp_compare[tidx] == rewarded_visual or \
+                    (first_V2O_visual_is_irrelV2 and not O2V and stim_count==0 and \
+                         stimulus_vector_exp_compare[tidx] == rewarded_visual+1):
                     stim_count += 1
                     if action_vector_exp_compare[tidx] == correct_action:
                         contiguous_correct_count += 1

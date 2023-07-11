@@ -37,29 +37,35 @@ def plot_sim_prob_actions_given_stimuli(probability_action_given_stimulus,
     if trans == 'O2V':
         rangeV = range(half_window+1,2*half_window+1)
         rangeO = range(0,half_window+1)
+        order_rewarded_vis_stim = (2,0)
     else: # V2O transition
         rangeO = range(half_window,2*half_window+1)
         rangeV = range(0,half_window)
+        order_rewarded_vis_stim = (0,2)
     p_act_compact[0,rangeV] = probability_action_given_stimulus_bytrials[0,rangeV,1] # visual block, visual stim 0 , lick 1
     p_act_compact[1,rangeV] = probability_action_given_stimulus_bytrials[1,rangeV,1] # visual block, visual stim 1 , lick 1
     p_act_compact[0,rangeO] = probability_action_given_stimulus_bytrials[2,rangeO,1] # olfactory block, visual stim 2 , lick 1
     p_act_compact[1,rangeO] = probability_action_given_stimulus_bytrials[3,rangeO,1] # olfactory block, visual stim 3 , lick 1
     ## no longer plotting visual plots in visual and olfactory blocks as one line
-    #for stimulus_index in range(2):
+    #for stimulus_index in (0,1):
     #    plot_without_nans(axpaper, xvec, p_act_compact\
     #                                [stimulus_index,:], marker='.',
     #                                color=colors[stimulus_index],
     #                                linestyle='solid',
     #                                label=labels[stimulus_index])
     # plotting the visual plots in the 2 blocks as separate lines
-    for stimulus_index in range(4):
+    # join the 'blue' rewarded visual line between the blocks across the transition
+    axpaper.plot( [-1,0], [ probability_action_given_stimulus_bytrials[order_rewarded_vis_stim[0],half_window-1,1],
+                            probability_action_given_stimulus_bytrials[order_rewarded_vis_stim[1],half_window,1] ],
+                           marker='.',color=colors[0],linestyle='solid' )
+    for stimulus_index in (0,1,2,3):
         plot_without_nans(axpaper, xvec, probability_action_given_stimulus_bytrials\
                                     [stimulus_index,:,1], marker='.',
                                     color=colors[stimulus_index],
                                     linestyle='solid',
                                     label=labels[stimulus_index])
     # olfactory plots remain the same as they only appear in olfactory block
-    for stimulus_index in range(4,6):
+    for stimulus_index in (4,5):
         plot_without_nans(axpaper, xvec, probability_action_given_stimulus_bytrials\
                                     [stimulus_index,:,1], marker='.',
                                     color=colors[stimulus_index],
@@ -108,18 +114,18 @@ def plot_mismatch_vs_perfectswitch(mismatch_by_perfectswitch_o2v, mismatch_by_pe
     #            [np.mean(mismatch_by_perfectswitch_o2v[0]),np.mean(mismatch_by_perfectswitch_o2v[1])],
     #            yerr=[np.std(mismatch_by_perfectswitch_o2v[0]),np.std(mismatch_by_perfectswitch_o2v[1])] )
     # showfliers = False only suppresses plotting of outliers, to expand whiskers, set whis to (0,100)
-    result = ax[0].boxplot( (mismatch_by_perfectswitch_o2v_0,mismatch_by_perfectswitch_o2v_1), whis=(0,100) )#, showfliers=False )
+    result = ax[0].boxplot( (mismatch_by_perfectswitch_o2v_1,mismatch_by_perfectswitch_o2v_0), whis=(0,100) )#, showfliers=False )
     # unsure how to find number of outliers. result['fliers'] is a list of two Line2D objects.
     #print('Number of outliers in O2V imperfect & perfect =',len(result['fliers'][0]),len(result['fliers'][1]))
-    ax[0].set_xticklabels(['imperfect switch','perfect switch'])
+    ax[0].set_xticklabels(['one-shot switch','slower switch'])
     ax[0].set_ylabel('block mismatch signal O2V')
     #ax[1].bar( [' switch','correct switch'],
     #            [np.mean(mismatch_by_perfectswitch_v2o[0]),np.mean(mismatch_by_perfectswitch_v2o[1])],
     #            yerr=[np.std(mismatch_by_perfectswitch_v2o[0]),np.std(mismatch_by_perfectswitch_v2o[1])] )
     # showfliers = False only suppresses plotting of outliers, to expand whiskers, set whis to (0,100)
-    result = ax[1].boxplot( (mismatch_by_perfectswitch_v2o_0,mismatch_by_perfectswitch_v2o_1), whis=(0,100) )#, showfliers=False )
+    result = ax[1].boxplot( (mismatch_by_perfectswitch_v2o_1,mismatch_by_perfectswitch_v2o_0), whis=(0,100) )#, showfliers=False )
     #print('Number of outliers in V2O imperfect & perfect =',len(result['fliers'][0]),len(result['fliers'][1]))
-    ax[1].set_xticklabels(['imperfect switch','perfect switch'])
+    ax[1].set_xticklabels(['one-shot switch','slower switch'])
     ax[1].set_ylabel('block mismatch signal V2O')
     fig.tight_layout()
     fig.savefig('mismatch.pdf')
@@ -271,7 +277,7 @@ def load_plot_simdata(filenamebase, seeds):
     plt.show()
         
 
-def load_plot_ACConvsoff(filenameACCon, filenameACCoff):
+def load_plot_ACConvsoff(filenameACCon, filenameACCoff, first_V2O_visual_is_irrelV2):
 
     window = 20
     fig, ax = plt.subplots(1,2,figsize=(10, 5))
@@ -286,9 +292,9 @@ def load_plot_ACConvsoff(filenameACCon, filenameACCoff):
     mismatch_error_record) = load_simdata(filenameACCon)
 
     switchtimes_O2V = get_switchtimes(True, window, exp_step, block_vector_exp_compare,
-                        stimulus_vector_exp_compare, action_vector_exp_compare)
+                        stimulus_vector_exp_compare, action_vector_exp_compare, first_V2O_visual_is_irrelV2)
     switchtimes_V2O = get_switchtimes(False, window, exp_step, block_vector_exp_compare,
-                        stimulus_vector_exp_compare, action_vector_exp_compare)
+                        stimulus_vector_exp_compare, action_vector_exp_compare, first_V2O_visual_is_irrelV2)
     xvals = range(window)
     ax[0].bar(xvals,switchtimes_O2V,width=1,color=(1,0,0,0.5))
     ax[1].bar(xvals,switchtimes_V2O,width=1,color=(1,0,0,0.5))
@@ -303,9 +309,9 @@ def load_plot_ACConvsoff(filenameACCon, filenameACCoff):
     mismatch_error_record) = load_simdata(filenameACCoff)
 
     switchtimes_O2V = get_switchtimes(True, window, exp_step, block_vector_exp_compare,
-                        stimulus_vector_exp_compare, action_vector_exp_compare)
+                        stimulus_vector_exp_compare, action_vector_exp_compare, first_V2O_visual_is_irrelV2)
     switchtimes_V2O = get_switchtimes(False, window, exp_step, block_vector_exp_compare,
-                        stimulus_vector_exp_compare, action_vector_exp_compare)
+                        stimulus_vector_exp_compare, action_vector_exp_compare, first_V2O_visual_is_irrelV2)
     ax[0].bar(xvals,switchtimes_O2V,width=1,color=(0,0,1,0.5))
     ax[1].bar(xvals,switchtimes_V2O,width=1,color=(0,0,1,0.5))
     
@@ -323,17 +329,30 @@ def load_plot_ACConvsoff(filenameACCon, filenameACCoff):
 if __name__ == "__main__":
 
     # chooses one the below to average sim data over seeds
-    #seeds = [1,2,3,4,5]
-    seeds = [1]
+    seeds = [1,2,3,4,5]  # always use this when new_data==2 in simulations, as 2 seeds use new mod to env, and 3 seeds use old env
+    #seeds = [1] # only with new_data in (0,1) during simulation -- obsolete
 
-    ## choose one or more of the below:
-    #load_plot_simdata('simulation_data/simdata_belief_numparams4_ACCcontrol_newdata',seeds) # BeliefRL, ACC on/normal -- new data
+    ## For Fig 1G and Supplementary Fig 7G comparing fits of BasicRL vs BeliefStateRL:
+    ## choose one or more of the below to plot BeliefStateRL or BasicRL:
+    # BeliefRL, ACC on/normal, newest data (2 seeds with modded task, 3 seeds without), no learning only exploration during testing
+    load_plot_simdata('simulation_data/simdata_belief_numparams4_nolearnwithexplore_ACCcontrol_newdata2',seeds)
+    # BasicRL, ACC on/normal, newest data (2 seeds with mod to exp, 3 seeds without), you need learning here during testing!
+    #load_plot_simdata('simulation_data/simdata_basic_numparams2_ACCcontrol_newdata2',seeds)
 
-    #load_plot_simdata('simulation_data/simdata_belief_numparams4_ACCcontrol',seeds) # BeliefRL, ACC on/normal -- old data, not used for Fig 1
-    #load_plot_simdata('simulation_data/simdata_belief_numparams4_ACCexp',seeds) # BeliefRL, ACC off -- old data, used for time to switch
-    #load_plot_simdata('simulation_data/simdata_basic_numparams2_ACCcontrol_newdata',seeds) # BasicRL, ACC on -- old data, not used for Fig 1
+    ## For Fig 6C comparing contex error signal mismatch between one-shot vs slower transitions (see only the mismatch.pdf figure, igonre other figures):
+    # BeliefRL, ACC on/normal, params as fit to newest data (2 seeds with modded task, 3 seeds without), no learning only exploration during testing.
+    #  But here we use only seed in (3,4,5) not in (1,2) as the former were run on older task while the latter were run on newer task,
+    #   whereas Fig 6 uses neural recordings which are only available in dataset 1 on older task.
+    #  We can still use the params for the agent fitted on dataset 2 as it subsumes dataset 1, 
+    #                      (in any case, params fitted to only dataset 1 are not too different)
+    #   but we run the agent only on older task, thus choose seed in (3,4,5).
+    #  Only 1 seed is needed as only 70 transitions are considered as in dataset 1.
+    #load_plot_simdata('simulation_data/simdata_belief_numparams4_nolearnwithexplore_ACCcontrol_newdata2',seeds=[3])
 
-    ## compare switching times between blocks for control (ACC on/normal) vs exp (ACC off)
-    load_plot_ACConvsoff('simulation_data/simdata_belief_numparams4_ACCcontrol_seed1.mat',
-                        'simulation_data/simdata_belief_numparams4_ACCexp_seed1.mat')
-
+    ## Suppl. Fig 2D: comparing switching times between blocks for control (ACC on/normal) vs exp (ACC off) with new_data=0:
+    # when comparing ACCon vs ACCoff, always simulate with new_data=0 in BeliefHistoryTabularRLSimulate.py as only the older data contains ACC on vs off,
+    #  which sets below flag to False (older task is used in older data) there, and so we set here as well:
+    first_V2O_visual_is_irrelV2 = False
+    #load_plot_ACConvsoff('simulation_data/simdata_belief_numparams4_nolearnwithexplore_ACCcontrol_seed1.mat',
+    #                     'simulation_data/simdata_belief_numparams4_nolearnwithexplore_ACCexp_seed1.mat',
+    #                     first_V2O_visual_is_irrelV2)

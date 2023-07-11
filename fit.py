@@ -48,7 +48,7 @@ if __name__ == "__main__":
     #ACC_off = True
     ACC_off = False
     if ACC_off:
-        ACC_off_factor = 0.5 # inhibited ACC, start fitting with same value for visual and odor
+        ACC_off_factor = 0.5 # inhibited ACC, start fitting with same initial value for visual and odor, but will fit two separate values
         ACC_str = 'exp'
     else:
         ACC_off_factor = 1.0 # uninhibited ACC
@@ -57,22 +57,24 @@ if __name__ == "__main__":
     # whether to fit to:
     #  0 = old (has ACC-on/control and ACC-off/exp) data, or
     #  1 = new (behaviour+neural w/ only ACC-on) data, or
-    #  2 = newest data with 4 sessions (having 1st cue after V2O as unrewarded V2) prepended to above 1 (= new data).
-    #new_data = 0
-    #new_data = 1
-    new_data = 2
+    #  2 = newest data with 4 sessions (having 1st cue after V2O as unrewarded V2) prepended to 13 sessions of above new data==1.
+    #new_data = 0 # for ACC on vs off switching times comparisons, on old task only
+    #new_data = 1 # for mismatch of context error signals between fast vs slow switches, on old task only
+    new_data = 2 # for comparing Belief State RL vs Basic RL (params fitted on this data using fit.py), on new and old tasks in 4:13 ratio
     if new_data in (1,2) and ACC_off:
-        print('New (behaviour+neural) data does not have data for ACC off i.e. exp condition.')
+        print('New (behaviour+neural) data (new_data==1) or newest data (new_data==2) does not have data for ACC off i.e. exp condition.')
         sys.exit(1)
-    # override the data to newest one, for fitting behaviour in 'control' (ACC on) condition
+    # for fitting behaviour in 'control' (ACC on) condition
     #  'exp' (ACC off) behaviour has not been recorded in either new or newest data below
     if new_data == 1:
         mouse_behaviour_data = mouse_behaviour_for_neural_data # 'new' data
     elif new_data == 2:
         # 2023 May update: 'newest' data with 4 sessions (4 mice 1 session each) having 1st cue after V2O as unrewarded V2,
         #                   prepended to rest 13 sessions of 'new' data, having 1st visual cue after V2O as unrewarded V1
-        # only the first 4 sessions of mouse_behaviour_data_newest are read in further below
-        mouse_behaviour_data = mouse_behaviour_for_neural_data # still read in the new data (same as last 13 sessions of newest data)
+        # the first 4 sessions of mouse_behaviour_data_newest are read in further below
+        # here we still set mouse_behaviour_data same as for new_data==1,
+        #  which are same as last 13 sessions of mouse_behaviour_data_newest
+        mouse_behaviour_data = mouse_behaviour_for_neural_data
 
     # choose one of the two below, either fit a session only, or all mice, all sessions.
     #fit_a_session = True
