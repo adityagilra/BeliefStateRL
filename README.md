@@ -18,7 +18,7 @@ First, `cd` to the BeliefStateRL directory.
 Create a directory to store simulation data (only once)  
 `mkdir simulation_data`  
 
-##Usage:  
+### Run simulation of RL agent with pre-fitted parameters:  
 `python BeliefHistoryTabularRLSimulate.py <belief|basic> <True|False> <0|1|2>`  
 belief|basic are to use BeliefStateRL or BasicRL agent.  
 True|False is refers to ACC being off i.e. inhibited (True) versus on (False).  
@@ -85,7 +85,7 @@ You can modify the number of parameters (default 2 for basic and 4 for belief we
         num_params_to_fit = 4 # only for belief RL
 ```
 
-## The experimental data is in the folder `experiment_data`.  
+## The experimental data is in the folder `experiment_data`  
 Some simple plots of the data can be made using:  
 `python exp_data_analysis.py`  
 
@@ -95,16 +95,17 @@ and
 `plot_exp_sim_data.py`
 after editing the filename of the simulation data in __main__ in this script.
 
-## The hierarchical task used in the the experiments to train the mice is transcribed as an OpenAI Gym environment in the directory `gym_tasks/envs/`.
+## Experimental task as OpenAI Gym environment:  
+The hierarchical task used in the the experiments to train the mice is transcribed as an OpenAI Gym environment in the directory `gym_tasks/envs/`.  
  See `BeliefStateRLSimulate.py` on how to import and `BeliefStateRL.py` on how to use the environment.  
 
 ## To fit the experimental data:  
 `python fit.py`  
-
+  
 Set the type of agent, number of parameters to fit, etc. in `fit.py`.  
 What these parameters do can be seen as comments in BeliefHistoryTabularRLSimulate.py, more formally in Methods sections of the paper -- the definitive version is as coded into the agent in BeliefHistoryTabularRL.py.  
 Here too, you need to select `new_data=0`/`1`/`2` and also whether `ACC_off=True`/`False` as above.  
-
+  
 For model selection i.e. comparing basic vs belief models: Set `k_validation=5` to do 5-fold cross validation -- fitting parameters on 4/5th of the data and testing on 1/5th of the data
  using the specified model/agent (uses 5 seeds and if `new_data==2` then first 2 seeds are run on new task and rest 3 on older task).  
 For obtaining fitted parameters for the best fit on the full dataset: Set `k_validation=1` to fit on the full data averaging RMSE of the agent across 5 seeds.  
