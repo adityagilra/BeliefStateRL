@@ -1,10 +1,13 @@
 # BeliefStateRL
-
+  
+This is the code and experimental data to simulate and fit the Basic RL and Belief State RL models from the [bioRxiv preprint Cole et al. 2022](https://doi.org/10.1101/2022.11.27.518096).  
+  
+## Prerequisites
 These simulations were run on linux within a conda environment whose exported list of dependencies is in environment.yml (also a pip export in requirements.txt).
 However these (environment.yml and requirements.txt) have a lot of packages which are not needed for this repo.   
 The packages below (and their dependencies) should be sufficient (version numbers are those that I used, but nearby ones should work as well):  
 python=3.6.10  
-pip:  
+pip install <package_name>:  
  gym==0.15.7  
  numpy==1.19.0  
  matplotlib==3.1.1  
@@ -15,8 +18,7 @@ First, `cd` to the BeliefStateRL directory.
 Create a directory to store simulation data (only once)  
 `mkdir simulation_data`  
 
-=========================================================================================================  
-Usage:  
+##Usage:  
 `python BeliefHistoryTabularRLSimulate.py <belief|basic> <True|False> <0|1|2>`  
 belief|basic are to use BeliefStateRL or BasicRL agent.  
 True|False is refers to ACC being off i.e. inhibited (True) versus on (False).  
@@ -28,21 +30,24 @@ True|False is refers to ACC being off i.e. inhibited (True) versus on (False).
           This dataset 1 is obsolete for simulation purposes, as it is incorporated into dataset 2 as below.  
  2 is a dataset, with only ACC on condition, of 4 sessions on newer task (having 1st cue after V2O as unrewarded V2),  
             prepended to the above 13 sessions of dataset 1 (on older task having 1st cue after V2O as unrewarded V1)  
-          used for comparing Belief State RL vs Basic RL, on new and old tasks in 4:13 ratio  
+          used for comparing Belief State RL vs Basic RL, on new and old tasks in 4:13 ratio.  
   
 This script does not fit params,  
  rather it simulates the agent setting params which were fitted already using fit.py for each of the specifications above.  
 These params are already hardcoded into BeliefHistoryTabularRLSimulate.py for various specifications,  
     so no need to run fit.py unless you want to re-fit.  
  See Table 1 in the Methods section of the paper for the model parameters used for these simulations, obtained after fitting (see further below for how to fit).  
----------------------------------------------------------------------------------------------------------  
-For Fig 1G and Suppl. Fig 7G, run (ACC_off=False and new_data=2):  
+_____
+### Reproducing specific figures:  
+Figure numbers are for v2 of the pre-print which will be updated soon, as of 6 Sep 2023.  
+  
+For Fig 1G and Suppl. Fig 3C, run (ACC_off=False and new_data=2):  
 `python BeliefHistoryTabularRLSimulate.py belief False 2`  
 for BeliefStateRL,  
 or  
 `python BeliefHistoryTabularRLSimulate.py basic False 2`  
 for BasicRL.  
----------------------------------------------------------------------------------------------------------  
+_____
 All runs of BeliefHistoryTabularRLSimulate.py will show plots in 2 batches (2 plt.show()s) at the end of the simulations,  
  but you can re-plot the saved files later using `python plot_simulation_data.py` (only simulated data)  
   or `python plot_exp_sim_data.py` (sim data overlaid on exp data).  
@@ -50,7 +55,7 @@ Comment/uncomment the relevant lines in __main__ there, e.g.:
 ```python  
 load_plot_simdata('simulation_data/simdata_belief_numparams4_nolearnwithexplore_ACCcontrol_newdata2',seeds)  
 ```  
----------------------------------------------------------------------------------------------------------  
+_____
 For Fig 6C, ensure that you have earlier run:  
 `python BeliefHistoryTabularRLSimulate.py belief False 2`  
 then uncomment in plot_simulation_data.py:  
@@ -58,14 +63,14 @@ then uncomment in plot_simulation_data.py:
 load_plot_simdata('simulation_data/simdata_belief_numparams4_nolearnwithexplore_ACCcontrol_newdata2',seeds=[2])  
 ```  
 comment other plotting lines, and run.  
----------------------------------------------------------------------------------------------------------  
-For Suppl Fig 2D (uses older dataset, hence 0, that has ACC off and on), run  
+_____
+For Suppl Fig 2D and Suppl Fig 3F (uses older dataset, hence 0, that has data for ACC off and on), run  
 `python BeliefHistoryTabularRLSimulate.py belief True 0`  
 and  
 `python BeliefHistoryTabularRLSimulate.py belief False 0`  
 then comment/uncomment the plotting lines for Suppl Fig 2D in plot_simulation_data.py and run.  
-=========================================================================================================  
-
+  
+### Changing the number of (pre-fitted) parameters used in the model  
 You can modify the number of parameters (default 2 for basic and 4 for belief were used in the paper and set here, though fits were obtained for others) by changing the script:  
 ```python
     ############## choose / uncomment one of the agents below! #################
