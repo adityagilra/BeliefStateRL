@@ -332,7 +332,7 @@ if __name__ == "__main__":
     seeds = [1,2,3,4,5]  # always use this when new_data==2 in simulations, as 2 seeds use new mod to env, and 3 seeds use old env
     #seeds = [1] # only with new_data in (0,1) during simulation -- obsolete
 
-    ## For Fig 1G and Supplementary Fig 7G comparing fits of BasicRL vs BeliefStateRL:
+    ## For Fig 1H and Supplementary Fig 3C comparing fits of BasicRL vs BeliefStateRL:
     ## choose one or more of the below to plot BeliefStateRL or BasicRL:
     # BeliefRL, ACC on/normal, newest data (2 seeds with modded task, 3 seeds without), no learning only exploration during testing
     load_plot_simdata('simulation_data/simdata_belief_numparams4_nolearnwithexplore_ACCcontrol_newdata2',seeds)
@@ -349,7 +349,7 @@ if __name__ == "__main__":
     #  Only 1 seed is needed as only 70 transitions are considered as in dataset 1.
     #load_plot_simdata('simulation_data/simdata_belief_numparams4_nolearnwithexplore_ACCcontrol_newdata2',seeds=[3])
 
-    ## Suppl. Fig 2D: comparing switching times between blocks for control (ACC on/normal) vs exp (ACC off) with new_data=0:
+    ## Suppl. Fig 2D and Suppl. Fig 3F: comparing switching times between blocks for control (ACC on/normal) vs exp (ACC off) with new_data=0:
     # when comparing ACCon vs ACCoff, always simulate with new_data=0 in BeliefHistoryTabularRLSimulate.py as only the older data contains ACC on vs off,
     #  which sets below flag to False (older task is used in older data) there, and so we set here as well:
     first_V2O_visual_is_irrelV2 = False
