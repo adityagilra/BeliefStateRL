@@ -1,6 +1,6 @@
 # BeliefStateRL
   
-This is the code and experimental data to simulate and fit the Basic RL and Belief State RL models from the [bioRxiv preprint Cole et al. 2022](https://doi.org/10.1101/2022.11.27.518096).  
+This is the code and experimental data to simulate and fit the Basic RL and Belief State RL models from version 2 of the [bioRxiv preprint Cole, et al., Prediction-error signals in anterior cingulate cortex drive task-switching, 2022](https://www.biorxiv.org/content/10.1101/2022.11.27.518096v2).  
   
 ## Prerequisites
 These simulations were run on linux within a conda environment whose exported list of dependencies is in environment.yml (also a pip export in requirements.txt).
@@ -21,8 +21,8 @@ Create a directory to store simulation data (only once)
 ### Run simulation of RL agent with pre-fitted parameters:  
 `python BeliefHistoryTabularRLSimulate.py <belief|basic> <True|False> <0|1|2>`  
 belief|basic are to use BeliefStateRL or BasicRL agent.  
-True|False is refers to ACC being off i.e. inhibited (True) versus on (False).  
-0|1|2 refers to using different datasets:  
+True|False simulates with ACC being off i.e. inhibited (True) versus on (False).  
+0|1|2 refers to using different datasets (use 0 or 2; 1 is obsolete since it is incorporated into 2):  
  0 is a dataset on older task with ACC on and off conditions,  
            used for ACC on vs off switching times comparisons  
  1 is a dataset on older task with only ACC on having 13 sessions, this is the dataset with neural recordings as well  
@@ -39,9 +39,9 @@ These params are already hardcoded into BeliefHistoryTabularRLSimulate.py for va
  See Table 1 in the Methods section of the paper for the model parameters used for these simulations, obtained after fitting (see further below for how to fit).  
 _____
 ### Reproducing specific figures:  
-Figure numbers are for v2 of the pre-print which will be updated soon, as of 6 Sep 2023.  
+Figure numbers are for [v2 of the pre-print](https://www.biorxiv.org/content/10.1101/2022.11.27.518096v2).  
   
-For Fig 1G and Suppl. Fig 3C, run (ACC_off=False and new_data=2):  
+For Fig 1H and Suppl. Fig 3C, run (ACC_off=False and new_data=2):  
 `python BeliefHistoryTabularRLSimulate.py belief False 2`  
 for BeliefStateRL,  
 or  
@@ -70,8 +70,8 @@ and
 `python BeliefHistoryTabularRLSimulate.py belief False 0`  
 then comment/uncomment the plotting lines for Suppl Fig 2D in plot_simulation_data.py and run.  
   
-### Changing the number of (pre-fitted) parameters used in the model  
-You can modify the number of parameters (default 2 for basic and 4 for belief were used in the paper and set here, though fits were obtained for others) by changing the script:  
+### Changing the number of (pre-fitted) parameters used in simulating the model  
+You can modify, in BeliefHistoryTabularRLSimulate.py, the number of pre-fitted parameters (default 2 for basic and 4 for belief were used in the paper and set here) by commenting/uncommenting lines 416 to 424 of __main__:  
 ```python
     ############## choose / uncomment one of the agents below! #################
     if agent_type == 'basic':
@@ -84,6 +84,7 @@ You can modify the number of parameters (default 2 for basic and 4 for belief we
         #num_params_to_fit = 3 # for both basic and belief RL
         num_params_to_fit = 4 # only for belief RL
 ```
+We obtained fits for all these num_params_to_fit - see below for how to fit parameters. These fitted values of parameters for these num_params_to_fit, are hard-coded into BeliefHistoryTabularRLSimulate.py
 
 ## The experimental data is in the folder `experiment_data`  
 Some simple plots of the data can be made using:  
